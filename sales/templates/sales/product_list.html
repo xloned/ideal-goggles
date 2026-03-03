@@ -1,0 +1,35 @@
+{% extends "sales/base.html" %}
+{% block title %}Товары на складе{% endblock %}
+{% block content %}
+<h1>База товаров (склад)</h1>
+<div class="card">
+    <a href="{% url 'product_add' %}" class="btn btn-success mb-10">Добавить товар</a>
+</div>
+
+{% if products %}
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Наименование</th>
+            <th>Цена (руб.)</th>
+            <th>Остаток на складе</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in products %}
+        <tr>
+            <td>{{ p.pk }}</td>
+            <td><strong>{{ p.name }}</strong></td>
+            <td>{{ p.price }}</td>
+            <td>{{ p.stock }}</td>
+            <td><a href="{% url 'product_edit' p.pk %}" class="btn btn-primary btn-sm">Ред.</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="card"><p>Товары отсутствуют.</p></div>
+{% endif %}
+{% endblock %}

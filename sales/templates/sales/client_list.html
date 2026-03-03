@@ -1,0 +1,46 @@
+{% extends "sales/base.html" %}
+{% block title %}Клиенты{% endblock %}
+{% block content %}
+<h1>База клиентов</h1>
+<div class="card">
+    <form method="get" style="display:flex; gap:10px; margin-bottom:15px;">
+        <input type="text" name="q" value="{{ query }}" placeholder="Поиск по имени клиента..." style="flex:1; padding:8px 12px; border:1px solid #ccc; border-radius:4px; font-size:14px;">
+        <button type="submit" class="btn btn-primary">Найти</button>
+        {% if query %}<a href="{% url 'client_list' %}" class="btn btn-danger">Сбросить</a>{% endif %}
+    </form>
+    <a href="{% url 'client_add' %}" class="btn btn-success mb-10">Добавить клиента</a>
+</div>
+
+{% if clients %}
+<table>
+    <thead>
+        <tr>
+            <th>Имя</th>
+            <th>Общий счёт покупок</th>
+            <th>Текущий счёт</th>
+            <th>Потолок кредита</th>
+            <th>Текущий долг</th>
+            <th>Остаток кредита</th>
+            <th>Комментарий</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in clients %}
+        <tr>
+            <td><strong>{{ c.name }}</strong></td>
+            <td>{{ c.total_purchases }} руб.</td>
+            <td>{{ c.current_account }} руб.</td>
+            <td>{{ c.credit_limit }} руб.</td>
+            <td style="{% if c.debt_warning %}color:#e74c3c; font-weight:bold;{% endif %}">{{ c.current_debt }} руб.</td>
+            <td style="{% if c.debt_warning %}color:#e74c3c; font-weight:bold;{% endif %}">{{ c.credit_remaining }} руб.</td>
+            <td>{{ c.comment|truncatewords:10 }}</td>
+            <td><a href="{% url 'client_edit' c.pk %}" class="btn btn-primary btn-sm">Ред.</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="card"><p>Клиенты не найдены.</p></div>
+{% endif %}
+{% endblock %}

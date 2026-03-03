@@ -1,0 +1,36 @@
+{% extends "sales/base.html" %}
+{% block title %}Заказы{% endblock %}
+{% block content %}
+<h1>Список заказов</h1>
+<div class="card mb-10">
+    <a href="{% url 'order_create' %}" class="btn btn-success">Новый заказ</a>
+</div>
+{% if orders %}
+{% for order in orders %}
+<div class="card">
+    <h3>Заказ #{{ order.pk }} &mdash; {{ order.client.name }} ({{ order.get_sale_type_display }})</h3>
+    <p style="color:#777; margin:5px 0;">{{ order.created_at }}</p>
+    <table style="margin-top:10px;">
+        <thead>
+            <tr><th>Товар</th><th>Цена</th><th>Кол-во</th><th>Сумма</th></tr>
+        </thead>
+        <tbody>
+            {% for item in order.items.all %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.price }} руб.</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.line_total }} руб.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr><td colspan="3" style="text-align:right; font-weight:bold;">Итого:</td><td style="font-weight:bold;">{{ order.total_sum }} руб.</td></tr>
+        </tfoot>
+    </table>
+</div>
+{% endfor %}
+{% else %}
+<div class="card"><p>Заказов пока нет.</p></div>
+{% endif %}
+{% endblock %}

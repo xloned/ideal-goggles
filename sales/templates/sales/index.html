@@ -1,0 +1,27 @@
+{% extends "sales/base.html" %}
+{% block title %}АРМ оператора по продажам{% endblock %}
+{% block content %}
+<h1>Автоматизированное рабочее место оператора по продажам</h1>
+<div class="flex" style="flex-wrap: wrap;">
+    <div class="card flex-1" style="min-width: 250px;">
+        <h2 style="margin-bottom:10px;">База клиентов</h2>
+        <p>Просмотр, поиск и редактирование данных клиентов.</p>
+        <a href="{% url 'client_list' %}" class="btn btn-primary mt-10" style="margin-top:15px;">Открыть</a>
+    </div>
+    <div class="card flex-1" style="min-width: 250px;">
+        <h2 style="margin-bottom:10px;">База товаров</h2>
+        <p>Склад товаров: наименования, цены, остатки.</p>
+        <a href="{% url 'product_list' %}" class="btn btn-primary mt-10" style="margin-top:15px;">Открыть</a>
+    </div>
+    <div class="card flex-1" style="min-width: 250px;">
+        <h2 style="margin-bottom:10px;">Новый заказ</h2>
+        <p>Создание заказа с выбором клиента, товаров и вида оплаты.</p>
+        <a href="{% url 'order_create' %}" class="btn btn-success mt-10" style="margin-top:15px;">Создать</a>
+    </div>
+    <div class="card flex-1" style="min-width: 250px;">
+        <h2 style="margin-bottom:10px;">Отчёт</h2>
+        <p>Сводка покупок по клиентам с общими суммами.</p>
+        <a href="{% url 'report' %}" class="btn btn-primary mt-10" style="margin-top:15px;">Открыть</a>
+    </div>
+</div>
+{% endblock %}

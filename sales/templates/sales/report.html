@@ -1,0 +1,48 @@
+{% extends "sales/base.html" %}
+{% block title %}Отчёт по клиентам{% endblock %}
+{% block content %}
+<h1>Отчёт: сводка покупок по клиентам</h1>
+{% for entry in report_data %}
+<div class="card">
+    <h3>{{ entry.client.name }}</h3>
+    <table style="margin:10px 0;">
+        <tr>
+            <td style="font-weight:600;">Общий счёт покупок:</td><td>{{ entry.client.total_purchases }} руб.</td>
+            <td style="font-weight:600;">Текущий счёт:</td><td>{{ entry.client.current_account }} руб.</td>
+        </tr>
+        <tr>
+            <td style="font-weight:600;">Потолок кредита:</td><td>{{ entry.client.credit_limit }} руб.</td>
+            <td style="font-weight:600;">Текущий долг:</td>
+            <td style="{% if entry.client.debt_warning %}color:#e74c3c; font-weight:bold;{% endif %}">{{ entry.client.current_debt }} руб.</td>
+        </tr>
+        <tr>
+            <td style="font-weight:600;">Остаток кредита:</td>
+            <td style="{% if entry.client.debt_warning %}color:#e74c3c; font-weight:bold;{% endif %}">{{ entry.client.credit_remaining }} руб.</td>
+            <td style="font-weight:600;">Сумма всех заказов:</td><td><strong>{{ entry.total }} руб.</strong></td>
+        </tr>
+    </table>
+
+    {% if entry.orders %}
+    <table>
+        <thead>
+            <tr><th>Заказ</th><th>Вид продажи</th><th>Дата</th><th>Сумма</th></tr>
+        </thead>
+        <tbody>
+            {% for oi in entry.orders %}
+            <tr>
+                <td>#{{ oi.order.pk }}</td>
+                <td>{{ oi.order.get_sale_type_display }}</td>
+                <td>{{ oi.order.created_at }}</td>
+                <td>{{ oi.order.total_sum }} руб.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:#999;">Заказов нет.</p>
+    {% endif %}
+</div>
+{% empty %}
+<div class="card"><p>Данных нет.</p></div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "sales/base.html" %}
+{% block title %}{% if client %}Редактирование клиента{% else %}Новый клиент{% endif %}{% endblock %}
+{% block content %}
+<h1>{% if client %}Редактирование клиента: {{ client.name }}{% else %}Добавление клиента{% endif %}</h1>
+<div class="card" style="max-width:600px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Имя клиента</label>
+            <input type="text" name="name" value="{{ client.name|default:'' }}" required>
+        </div>
+        <div class="form-group">
+            <label>Общий счёт покупок (руб.)</label>
+            <input type="number" step="0.01" name="total_purchases" value="{{ client.total_purchases|default:'0' }}">
+        </div>
+        <div class="form-group">
+            <label>Текущий счёт (руб.)</label>
+            <input type="number" step="0.01" name="current_account" value="{{ client.current_account|default:'0' }}">
+        </div>
+        <div class="form-group">
+            <label>Потолок кредита (руб.)</label>
+            <input type="number" step="0.01" name="credit_limit" value="{{ client.credit_limit|default:'0' }}">
+        </div>
+        <div class="form-group">
+            <label>Текущий долг (руб.)</label>
+            <input type="number" step="0.01" name="current_debt" value="{{ client.current_debt|default:'0' }}">
+        </div>
+        <div class="form-group">
+            <label>Комментарий</label>
+            <textarea name="comment" rows="3">{{ client.comment|default:'' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-success">Сохранить</button>
+        <a href="{% url 'client_list' %}" class="btn btn-danger">Отмена</a>
+    </form>
+</div>
+{% endblock %}

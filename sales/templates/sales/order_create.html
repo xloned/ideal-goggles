@@ -1,0 +1,350 @@
+{% extends "sales/base.html" %}
+{% block title %}Новый заказ{% endblock %}
+{% block content %}
+<h1>Создание нового заказа</h1>
+
+<div id="warnings-container"></div>
+
+<div class="flex" style="flex-wrap: wrap;">
+    <!-- Left: Client selection -->
+    <div class="card flex-1" style="min-width:350px;">
+        <h2 style="margin-bottom:15px;">Клиент</h2>
+        <div class="form-group">
+            <label>Поиск клиента по имени</label>
+            <input type="text" id="client-search" placeholder="Начните вводить имя..." autocomplete="off">
+            <div id="client-suggestions" style="border:1px solid #ccc; border-top:none; display:none; max-height:200px; overflow-y:auto; background:#fff; position:relative; z-index:10;"></div>
+        </div>
+        <input type="hidden" id="client-id" value="">
+        <div id="client-info" style="display:none;">
+            <table style="box-shadow:none;">
+                <tr><td style="font-weight:600;">Имя:</td><td id="ci-name"></td></tr>
+                <tr><td style="font-weight:600;">Общий счёт покупок:</td><td id="ci-total"></td></tr>
+                <tr><td style="font-weight:600;">Текущий счёт:</td><td id="ci-account"></td></tr>
+                <tr><td style="font-weight:600;">Потолок кредита:</td><td id="ci-limit"></td></tr>
+                <tr><td style="font-weight:600;">Текущий долг:</td><td id="ci-debt"></td></tr>
+                <tr><td style="font-weight:600;">Остаток кредита:</td><td id="ci-remaining"></td></tr>
+                <tr><td style="font-weight:600;">Комментарий:</td><td id="ci-comment"></td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Right: Sale type -->
+    <div class="card flex-1" style="min-width:300px;">
+        <h2 style="margin-bottom:15px;">Вид продажи</h2>
+        <div class="form-group">
+            <select id="sale-type" style="font-size:16px; padding:10px;">
+                <option value="cash">Наличный расчёт</option>
+                <option value="cashless">Безналичный расчёт</option>
+                <option value="credit">Кредит</option>
+                <option value="barter">Бартер</option>
+                <option value="offset">Взаимозачёт</option>
+            </select>
+        </div>
+        <div id="sale-type-info" class="alert alert-warning" style="display:none;"></div>
+    </div>
+</div>
+
+<!-- Order items table -->
+<div class="card">
+    <h2 style="margin-bottom:15px;">Позиции заказа</h2>
+    <table id="items-table">
+        <thead>
+            <tr>
+                <th style="width:30%;">Товар</th>
+                <th style="width:12%;">Цена (руб.)</th>
+                <th style="width:12%;">Количество</th>
+                <th style="width:15%;">Сумма (руб.)</th>
+                <th style="width:15%;">Остаток на складе</th>
+                <th style="width:16%;"></th>
+            </tr>
+        </thead>
+        <tbody id="items-body">
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" style="text-align:right; font-weight:bold; font-size:16px;">Итого:</td>
+                <td style="font-weight:bold; font-size:16px;" id="order-total">0.00</td>
+                <td colspan="2"></td>
+            </tr>
+        </tfoot>
+    </table>
+    <button type="button" class="btn btn-primary mt-10" onclick="addRow()">Добавить позицию</button>
+</div>
+
+<div style="margin-top:15px;">
+    <button type="button" class="btn btn-success" style="font-size:16px; padding:12px 30px;" onclick="submitOrder()">Оформить заказ</button>
+    <a href="{% url 'order_list' %}" class="btn btn-danger" style="font-size:16px; padding:12px 30px;">Отмена</a>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const products = {{ products|safe }};
+let productsData = [];
+
+// Load products via API
+fetch("{% url 'product_api' %}")
+    .then(r => r.json())
+    .then(data => { productsData = data; addRow(); });
+
+// ─── Client search with live suggestions ─────────────────────
+const searchInput = document.getElementById("client-search");
+const suggestionsDiv = document.getElementById("client-suggestions");
+let searchTimeout;
+
+searchInput.addEventListener("input", function() {
+    clearTimeout(searchTimeout);
+    const q = this.value.trim();
+    if (q.length < 1) {
+        suggestionsDiv.style.display = "none";
+        return;
+    }
+    searchTimeout = setTimeout(() => {
+        fetch("{% url 'client_search_api' %}?q=" + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(data => {
+                if (data.length === 0) {
+                    suggestionsDiv.innerHTML = '<div style="padding:8px 12px; color:#999;">Клиент не найден</div>';
+                } else {
+                    suggestionsDiv.innerHTML = data.map(c =>
+                        `<div style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee;"
+                              onmouseover="this.style.background='#e8f4fd'"
+                              onmouseout="this.style.background='#fff'"
+                              onclick='selectClient(${JSON.stringify(c).replace(/'/g, "&#39;")})'>${c.name}</div>`
+                    ).join("");
+                }
+                suggestionsDiv.style.display = "block";
+            });
+    }, 300);
+});
+
+document.addEventListener("click", function(e) {
+    if (!suggestionsDiv.contains(e.target) && e.target !== searchInput) {
+        suggestionsDiv.style.display = "none";
+    }
+});
+
+function selectClient(c) {
+    document.getElementById("client-id").value = c.id;
+    searchInput.value = c.name;
+    suggestionsDiv.style.display = "none";
+
+    document.getElementById("ci-name").textContent = c.name;
+    document.getElementById("ci-total").textContent = c.total_purchases + " руб.";
+    document.getElementById("ci-account").textContent = c.current_account + " руб.";
+    document.getElementById("ci-limit").textContent = c.credit_limit + " руб.";
+
+    const debtEl = document.getElementById("ci-debt");
+    const remEl = document.getElementById("ci-remaining");
+    debtEl.textContent = c.current_debt + " руб.";
+    remEl.textContent = c.credit_remaining + " руб.";
+
+    if (c.debt_warning) {
+        debtEl.style.color = "#e74c3c";
+        debtEl.style.fontWeight = "bold";
+        remEl.style.color = "#e74c3c";
+        remEl.style.fontWeight = "bold";
+    } else {
+        debtEl.style.color = "";
+        debtEl.style.fontWeight = "";
+        remEl.style.color = "";
+        remEl.style.fontWeight = "";
+    }
+
+    document.getElementById("ci-comment").textContent = c.comment || "—";
+    document.getElementById("client-info").style.display = "block";
+}
+
+// ─── Sale type description ────────────────────────────────────
+const saleTypeSelect = document.getElementById("sale-type");
+const saleTypeInfo = document.getElementById("sale-type-info");
+const saleDescriptions = {
+    cash: "Наличный расчёт: увеличивается общий счёт покупок, количество товаров уменьшается.",
+    cashless: "Безналичный расчёт: увеличивается общий счёт покупок, уменьшается текущий счёт клиента.",
+    credit: "Кредит: увеличивается общий счёт покупок и текущий долг, уменьшается остаток кредита.",
+    barter: "Бартер: обмен товаров без денег. Стоимость отданных товаров = стоимости полученных.",
+    offset: "Взаимозачёт: уменьшается текущий долг, увеличивается остаток кредита, товары возвращаются на склад."
+};
+
+saleTypeSelect.addEventListener("change", function() {
+    saleTypeInfo.textContent = saleDescriptions[this.value];
+    saleTypeInfo.style.display = "block";
+});
+
+// ─── Order items ──────────────────────────────────────────────
+let rowCounter = 0;
+
+function addRow() {
+    const tbody = document.getElementById("items-body");
+    const row = document.createElement("tr");
+    const idx = rowCounter++;
+
+    let optionsHtml = '<option value="">-- Выберите товар --</option>';
+    productsData.forEach(p => {
+        optionsHtml += `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${p.name}</option>`;
+    });
+
+    row.innerHTML = `
+        <td><select id="prod-${idx}" onchange="onProductChange(${idx})" style="width:100%; padding:6px;">${optionsHtml}</select></td>
+        <td><input type="text" id="price-${idx}" readonly style="background:#f5f5f5; width:100%;"></td>
+        <td><input type="number" id="qty-${idx}" min="1" value="1" onchange="onQtyChange(${idx})" oninput="onQtyChange(${idx})" style="width:100%;"></td>
+        <td><span id="sum-${idx}">0.00</span></td>
+        <td><span id="stock-${idx}" style="font-weight:bold;">—</span></td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove(); recalcTotal();">Удалить</button></td>
+    `;
+    row.dataset.idx = idx;
+    tbody.appendChild(row);
+}
+
+function onProductChange(idx) {
+    const sel = document.getElementById(`prod-${idx}`);
+    const opt = sel.options[sel.selectedIndex];
+    const priceInput = document.getElementById(`price-${idx}`);
+    const stockSpan = document.getElementById(`stock-${idx}`);
+
+    if (opt.value) {
+        priceInput.value = parseFloat(opt.dataset.price).toFixed(2);
+        stockSpan.textContent = opt.dataset.stock;
+        stockSpan.style.color = "#27ae60";
+    } else {
+        priceInput.value = "";
+        stockSpan.textContent = "—";
+        stockSpan.style.color = "";
+    }
+    onQtyChange(idx);
+}
+
+function onQtyChange(idx) {
+    const sel = document.getElementById(`prod-${idx}`);
+    const opt = sel.options[sel.selectedIndex];
+    const qty = parseInt(document.getElementById(`qty-${idx}`).value) || 0;
+    const priceVal = parseFloat(document.getElementById(`price-${idx}`).value) || 0;
+    const sumSpan = document.getElementById(`sum-${idx}`);
+    const stockSpan = document.getElementById(`stock-${idx}`);
+
+    sumSpan.textContent = (priceVal * qty).toFixed(2);
+
+    if (opt && opt.value) {
+        const stock = parseInt(opt.dataset.stock);
+        if (qty > stock) {
+            stockSpan.style.color = "#e74c3c";
+            stockSpan.style.fontWeight = "bold";
+            // Sound alert for exceeding stock
+            playAlert();
+        } else {
+            stockSpan.style.color = "#27ae60";
+            stockSpan.style.fontWeight = "bold";
+        }
+    }
+    recalcTotal();
+}
+
+function recalcTotal() {
+    let total = 0;
+    document.querySelectorAll("[id^='sum-']").forEach(el => {
+        total += parseFloat(el.textContent) || 0;
+    });
+    document.getElementById("order-total").textContent = total.toFixed(2);
+}
+
+function playAlert() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 800;
+        gain.gain.value = 0.3;
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+    } catch(e) {}
+}
+
+// ─── Submit order ─────────────────────────────────────────────
+function submitOrder() {
+    const clientId = document.getElementById("client-id").value;
+    const saleType = document.getElementById("sale-type").value;
+    const warningsContainer = document.getElementById("warnings-container");
+    warningsContainer.innerHTML = "";
+
+    if (!clientId) {
+        warningsContainer.innerHTML = '<div class="alert alert-danger">Выберите клиента!</div>';
+        return;
+    }
+
+    const rows = document.querySelectorAll("#items-body tr");
+    if (rows.length === 0) {
+        warningsContainer.innerHTML = '<div class="alert alert-danger">Добавьте хотя бы одну позицию!</div>';
+        return;
+    }
+
+    const items = [];
+    let hasErrors = false;
+
+    rows.forEach(row => {
+        const idx = row.dataset.idx;
+        const productId = document.getElementById(`prod-${idx}`).value;
+        const price = document.getElementById(`price-${idx}`).value;
+        const qty = document.getElementById(`qty-${idx}`).value;
+
+        items.push({
+            product_id: productId || "",
+            price: price || "0",
+            quantity: qty || "0"
+        });
+
+        if (!productId || parseFloat(price) <= 0 || parseInt(qty) <= 0) {
+            hasErrors = true;
+        }
+    });
+
+    // Credit limit warning
+    if (saleType === "credit" && clientId) {
+        const totalVal = parseFloat(document.getElementById("order-total").textContent) || 0;
+        const debtText = document.getElementById("ci-debt").textContent;
+        const limitText = document.getElementById("ci-limit").textContent;
+        const currentDebt = parseFloat(debtText) || 0;
+        const creditLimit = parseFloat(limitText) || 0;
+        const remaining = creditLimit - currentDebt;
+        if (totalVal > remaining) {
+            warningsContainer.innerHTML += '<div class="alert alert-danger"><strong>Предупреждение:</strong> Сумма заказа (' + totalVal.toFixed(2) + ' руб.) превышает остаток кредита (' + remaining.toFixed(2) + ' руб.)!</div>';
+            playAlert();
+        }
+    }
+
+    const formData = new FormData();
+    formData.append("client_id", clientId);
+    formData.append("sale_type", saleType);
+    formData.append("items_json", JSON.stringify(items));
+    formData.append("csrfmiddlewaretoken", "{{ csrf_token }}");
+
+    fetch("{% url 'order_create' %}", {
+        method: "POST",
+        body: formData,
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === "error") {
+            warningsContainer.innerHTML = data.warnings.map(w =>
+                `<div class="alert alert-danger"><strong>Предупреждение:</strong> ${w}</div>`
+            ).join("");
+            playAlert();
+            return;
+        }
+        let msg = `<div class="alert alert-success">Заказ #${data.order_id} успешно оформлен!</div>`;
+        if (data.credit_warning) {
+            msg += `<div class="alert alert-danger"><strong>Внимание!</strong> ${data.credit_warning}</div>`;
+            playAlert();
+        }
+        warningsContainer.innerHTML = msg;
+        // Reload after 2 seconds
+        setTimeout(() => { window.location.href = "{% url 'order_list' %}"; }, 2000);
+    })
+    .catch(err => {
+        warningsContainer.innerHTML = `<div class="alert alert-danger">Ошибка: ${err}</div>`;
+    });
+}
+</script>
+{% endblock %}
