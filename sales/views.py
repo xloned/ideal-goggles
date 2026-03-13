@@ -98,7 +98,8 @@ def product_add(request):
             errors.append("Некорректное количество.")
             stock = 0
         if errors:
-            return render(request, "sales/product_form.html", {"errors": errors})
+            form_data = {"name": name, "price": price_str, "stock": stock_str}
+            return render(request, "sales/product_form.html", {"errors": errors, "form_data": form_data})
         Product.objects.create(name=name, price=price, stock=stock)
         return redirect("product_list")
     return render(request, "sales/product_form.html")
