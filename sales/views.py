@@ -158,10 +158,35 @@ def order_create(request):
         sale_type = request.POST.get("sale_type")
         items_json = request.POST.get("items_json", "[]")
 
+        barter_items_json = request.POST.get("barter_items_json", "[]")
+
         client = get_object_or_404(Client, pk=client_id)
         items_data = json.loads(items_json)
+        barter_items_data = json.loads(barter_items_json)
 
         warnings = []
+
+        # Validate barter items
+        if sale_type == "barter":
+            if not barter_items_data:
+                warnings.append("Для бартера необходимо указать товары в обмен.")
+            else:
+                barter_total = Decimal("0")
+                for bi in barter_items_data:
+                    if not bi.get("product_id"):
+                        warnings.append("Есть незаполненные товары в обмене.")
+                        break
+                    bp = Product.objects.filter(pk=bi["product_id"]).first()
+                    if bp:
+                        barter_total += bp.price * int(bi.get("quantity", 0))
+                items_total = Decimal("0")
+                for item in items_data:
+                    p = Product.objects.filter(pk=item.get("product_id")).first()
+                    if p:
+                        items_total += p.price * int(item.get("quantity", 0))
+                if abs(items_total - barter_total) >= Decimal("0.01"):
+                    warnings.append(f"Суммы не совпадают: отдано {items_total} руб., получено {barter_total} руб.")
+
         # Validate items
         for item in items_data:
             if not item.get("product_id"):
@@ -225,7 +250,12 @@ def order_create(request):
                 remaining = total
             client.current_debt += remaining
         elif sale_type == "barter":
-            pass  # No account changes
+            # Increase stock for received barter items
+            for bi in barter_items_data:
+                barter_product = get_object_or_404(Product, pk=bi["product_id"])
+                bqty = int(bi["quantity"])
+                barter_product.stock += bqty
+                barter_product.save()
         elif sale_type == "offset":
             client.current_debt -= total
         client.save()

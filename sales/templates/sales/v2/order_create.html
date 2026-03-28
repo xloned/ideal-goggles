@@ -78,6 +78,38 @@
     </div>
 </div>
 
+<!-- Barter: items received in exchange -->
+<div class="v2-card" id="barter-section" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="margin:0; color:#8b5cf6;">Товары в обмен (получаемые)</h2>
+        <button type="button" class="btn btn-primary" onclick="addBarterRow()">+ Добавить обмен</button>
+    </div>
+    <p class="text-muted" style="margin-bottom:12px;">Укажите товары, которые клиент отдаёт в обмен. Сумма должна совпадать.</p>
+    <div style="overflow-x:auto;">
+    <table id="barter-table">
+        <thead>
+            <tr>
+                <th style="width:30%;">Товар</th>
+                <th style="width:15%;">Цена (руб.)</th>
+                <th style="width:12%;">Количество</th>
+                <th style="width:15%;">Сумма (руб.)</th>
+                <th style="width:16%;"></th>
+            </tr>
+        </thead>
+        <tbody id="barter-body">
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" style="text-align:right; font-weight:700; font-size:16px;">Итого обмен:</td>
+                <td style="font-weight:700; font-size:16px; color:#8b5cf6;" id="barter-total">0.00</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+    </div>
+    <div id="barter-balance" style="margin-top:10px;"></div>
+</div>
+
 <div style="display:flex; gap:12px; margin-top:8px;">
     <button type="button" class="btn btn-success" style="font-size:15px; padding:12px 32px;" onclick="submitOrder()">Оформить заказ</button>
     <a href="{% url 'order_list_v2' %}" class="btn btn-outline" style="font-size:15px; padding:12px 32px;">Отмена</a>
@@ -161,6 +193,14 @@ const saleDescriptions = {
 saleTypeSelect.addEventListener("change", function() {
     saleTypeInfo.textContent = saleDescriptions[this.value];
     saleTypeInfo.style.display = "block";
+    // Show/hide barter section
+    const barterSection = document.getElementById("barter-section");
+    if (this.value === "barter") {
+        barterSection.style.display = "";
+        if (document.getElementById("barter-body").children.length === 0) addBarterRow();
+    } else {
+        barterSection.style.display = "none";
+    }
 });
 
 // ─── Order items ───
@@ -240,6 +280,63 @@ function playAlert() {
     } catch(e) {}
 }
 
+// ─── Barter items ───
+let barterCounter = 0;
+
+function addBarterRow() {
+    const tbody = document.getElementById("barter-body");
+    const row = document.createElement("tr");
+    const idx = barterCounter++;
+    let optionsHtml = '<option value="">-- Выберите товар --</option>';
+    productsData.forEach(p => {
+        optionsHtml += `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${p.name}</option>`;
+    });
+    row.innerHTML = `
+        <td><select id="bprod-${idx}" onchange="onBarterProductChange(${idx})" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; font-size:13px;">${optionsHtml}</select></td>
+        <td><input type="text" id="bprice-${idx}" readonly style="background:#f8f9fb; width:100%; padding:8px; border:1px solid #e8ecf1; border-radius:6px; font-size:13px;"></td>
+        <td><input type="number" id="bqty-${idx}" min="1" value="1" onchange="onBarterQtyChange(${idx})" oninput="onBarterQtyChange(${idx})" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; font-size:13px;"></td>
+        <td><span id="bsum-${idx}" style="font-weight:600;">0.00</span></td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove(); recalcBarterTotal();">Удалить</button></td>
+    `;
+    row.dataset.bidx = idx;
+    tbody.appendChild(row);
+}
+
+function onBarterProductChange(idx) {
+    const sel = document.getElementById(`bprod-${idx}`);
+    const opt = sel.options[sel.selectedIndex];
+    const priceInput = document.getElementById(`bprice-${idx}`);
+    if (opt.value) {
+        priceInput.value = parseFloat(opt.dataset.price).toFixed(2);
+    } else {
+        priceInput.value = "";
+    }
+    onBarterQtyChange(idx);
+}
+
+function onBarterQtyChange(idx) {
+    const priceVal = parseFloat(document.getElementById(`bprice-${idx}`).value) || 0;
+    const qty = parseInt(document.getElementById(`bqty-${idx}`).value) || 0;
+    document.getElementById(`bsum-${idx}`).textContent = (priceVal * qty).toFixed(2);
+    recalcBarterTotal();
+}
+
+function recalcBarterTotal() {
+    let total = 0;
+    document.querySelectorAll("[id^='bsum-']").forEach(el => {
+        total += parseFloat(el.textContent) || 0;
+    });
+    document.getElementById("barter-total").textContent = total.toFixed(2);
+    const orderTotal = parseFloat(document.getElementById("order-total").textContent) || 0;
+    const balanceDiv = document.getElementById("barter-balance");
+    const diff = Math.abs(orderTotal - total);
+    if (diff < 0.01) {
+        balanceDiv.innerHTML = '<span style="color:#10b981; font-weight:bold;">Суммы совпадают</span>';
+    } else {
+        balanceDiv.innerHTML = `<span style="color:#ef4444; font-weight:bold;">Разница: ${diff.toFixed(2)} руб. Суммы должны совпадать!</span>`;
+    }
+}
+
 // ─── Submit order ───
 function submitOrder() {
     const clientId = document.getElementById("client-id").value;
@@ -259,18 +356,44 @@ function submitOrder() {
     });
     if (saleType === "credit" && clientId) {
         const totalVal = parseFloat(document.getElementById("order-total").textContent) || 0;
-        const currentDebt = parseFloat(document.getElementById("ci-debt").textContent) || 0;
-        const creditLimit = parseFloat(document.getElementById("ci-limit").textContent) || 0;
+        const debtText = document.getElementById("ci-debt").textContent;
+        const limitText = document.getElementById("ci-limit").textContent;
+        const currentDebt = parseFloat(debtText) || 0;
+        const creditLimit = parseFloat(limitText) || 0;
         const remaining = creditLimit - currentDebt;
         if (totalVal > remaining) {
             warningsContainer.innerHTML += '<div class="alert alert-danger"><strong>Внимание:</strong> Сумма заказа (' + totalVal.toFixed(2) + ' руб.) превышает остаток кредита (' + remaining.toFixed(2) + ' руб.)!</div>';
             playAlert();
         }
     }
+    // Barter items
+    let barterItems = [];
+    if (saleType === "barter") {
+        const barterRows = document.querySelectorAll("#barter-body tr");
+        if (barterRows.length === 0) {
+            warningsContainer.innerHTML = '<div class="alert alert-danger">Для бартера добавьте товары в обмен!</div>';
+            return;
+        }
+        barterRows.forEach(row => {
+            const bidx = row.dataset.bidx;
+            const productId = document.getElementById(`bprod-${bidx}`).value;
+            const price = document.getElementById(`bprice-${bidx}`).value;
+            const qty = document.getElementById(`bqty-${bidx}`).value;
+            barterItems.push({ product_id: productId || "", price: price || "0", quantity: qty || "0" });
+        });
+        const orderTotal = parseFloat(document.getElementById("order-total").textContent) || 0;
+        const barterTotal = parseFloat(document.getElementById("barter-total").textContent) || 0;
+        if (Math.abs(orderTotal - barterTotal) >= 0.01) {
+            warningsContainer.innerHTML = '<div class="alert alert-danger">Сумма отдаваемых и получаемых товаров должна совпадать!</div>';
+            playAlert();
+            return;
+        }
+    }
     const formData = new FormData();
     formData.append("client_id", clientId);
     formData.append("sale_type", saleType);
     formData.append("items_json", JSON.stringify(items));
+    formData.append("barter_items_json", JSON.stringify(barterItems));
     formData.append("csrfmiddlewaretoken", "{{ csrf_token }}");
     fetch("{% url 'order_create' %}", { method: "POST", body: formData })
     .then(r => r.json())
