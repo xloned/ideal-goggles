@@ -199,8 +199,56 @@ def order_create(request):
                 warnings.append("Есть строки с нулевым количеством.")
                 break
 
+        # Calculate order total for credit/offset validation
+        order_total = Decimal("0")
+        for item in items_data:
+            p = Product.objects.filter(pk=item.get("product_id")).first()
+            if p:
+                order_total += p.price * int(item.get("quantity", 0))
+
+        # Credit validation: order total cannot exceed remaining credit
+        if sale_type == "credit":
+            # If client has current_account, it will be used first
+            effective_total = order_total - min(client.current_account, order_total)
+            if effective_total > client.credit_remaining:
+                warnings.append(
+                    f"Сумма кредита ({effective_total} руб.) превышает остаток кредита "
+                    f"({client.credit_remaining} руб.). Потолок кредита: {client.credit_limit} руб., "
+                    f"текущий долг: {client.current_debt} руб."
+                )
+            # 90% warning (pre-order check)
+            if client.credit_limit > 0:
+                future_debt = client.current_debt + effective_total
+                if future_debt >= client.credit_limit * Decimal("0.9"):
+                    warnings.append(
+                        f"Внимание! После этого заказа долг клиента ({future_debt} руб.) "
+                        f"достигнет {round(future_debt / client.credit_limit * 100, 1)}% от потолка кредита "
+                        f"({client.credit_limit} руб.)."
+                    )
+
+        # Offset validation: cannot offset more than current debt
+        if sale_type == "offset":
+            if order_total > client.current_debt:
+                warnings.append(
+                    f"Сумма взаимозачёта ({order_total} руб.) превышает текущий долг клиента "
+                    f"({client.current_debt} руб.). Нельзя зачесть больше, чем задолженность."
+                )
+
         if warnings:
-            return JsonResponse({"status": "error", "warnings": warnings})
+            # For credit 90% warning — it's just a warning, allow if debt doesn't exceed limit
+            # For hard errors (exceeds limit, offset > debt) — block
+            has_hard_error = False
+            for w in warnings:
+                if "превышает остаток кредита" in w or "превышает текущий долг" in w or \
+                   "Суммы не совпадают" in w or "незаполненным" in w or \
+                   "нулевой ценой" in w or "нулевым количеством" in w or \
+                   "незаполненным товаром" in w or "необходимо указать" in w:
+                    has_hard_error = True
+                    break
+            if has_hard_error:
+                return JsonResponse({"status": "error", "warnings": warnings})
+            # Soft warnings (90%) — include but don't block
+            # Continue to create order, pass warnings in response
 
         order = Order.objects.create(
             client=client, sale_type=sale_type, total_sum=0
@@ -266,14 +314,21 @@ def order_create(request):
             "debt_warning": client.debt_warning,
             "current_debt": str(client.current_debt),
             "credit_remaining": str(client.credit_remaining),
+            "total_purchases": str(client.total_purchases),
+            "current_account": str(client.current_account),
         }
 
-        # Credit warning
+        # Credit 90% warning (post-order)
         if sale_type == "credit" and client.debt_warning:
             result["credit_warning"] = (
-                f"Текущий долг клиента ({client.current_debt} руб.) приближается "
-                f"к потолку кредита ({client.credit_limit} руб.)!"
+                f"Внимание! Текущий долг клиента ({client.current_debt} руб.) составляет "
+                f"{round(client.current_debt / client.credit_limit * 100, 1)}% от потолка кредита "
+                f"({client.credit_limit} руб.)!"
             )
+
+        # Include soft warnings (90% pre-order warning)
+        if warnings:
+            result["soft_warnings"] = warnings
 
         return JsonResponse(result)
 

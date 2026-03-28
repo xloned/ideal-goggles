@@ -281,6 +281,33 @@ function recalcTotal() {
         total += parseFloat(el.textContent) || 0;
     });
     document.getElementById("order-total").textContent = total.toFixed(2);
+    checkCreditRealtime(total);
+}
+
+function checkCreditRealtime(total) {
+    const saleType = document.getElementById("sale-type").value;
+    const infoDiv = document.getElementById("sale-type-info");
+    if (saleType !== "credit") return;
+    const clientId = document.getElementById("client-id").value;
+    if (!clientId) return;
+    const currentDebt = parseFloat(document.getElementById("ci-debt").textContent) || 0;
+    const creditLimit = parseFloat(document.getElementById("ci-limit").textContent) || 0;
+    const currentAccount = parseFloat(document.getElementById("ci-account").textContent) || 0;
+    const remaining = creditLimit - currentDebt;
+    const effectiveTotal = Math.max(0, total - Math.min(currentAccount, total));
+    const futureDebt = currentDebt + effectiveTotal;
+    if (effectiveTotal > remaining) {
+        infoDiv.className = "alert alert-danger";
+        infoDiv.innerHTML = `<strong>Превышен лимит!</strong> Кредит: ${effectiveTotal.toFixed(2)} руб., остаток кредита: ${remaining.toFixed(2)} руб.`;
+        infoDiv.style.display = "block";
+    } else if (creditLimit > 0 && futureDebt >= creditLimit * 0.9) {
+        infoDiv.className = "alert alert-warning";
+        infoDiv.innerHTML = `<strong>Внимание:</strong> Долг после заказа: ${futureDebt.toFixed(2)} руб. (${(futureDebt/creditLimit*100).toFixed(1)}% от потолка ${creditLimit.toFixed(2)} руб.)`;
+        infoDiv.style.display = "block";
+    } else {
+        infoDiv.textContent = saleDescriptions[saleType];
+        infoDiv.className = "alert alert-warning";
+    }
 }
 
 function playAlert() {
@@ -395,17 +422,34 @@ function submitOrder() {
         }
     });
 
-    // Credit limit warning
+    // Credit limit warning — hard block if exceeds
     if (saleType === "credit" && clientId) {
         const totalVal = parseFloat(document.getElementById("order-total").textContent) || 0;
-        const debtText = document.getElementById("ci-debt").textContent;
-        const limitText = document.getElementById("ci-limit").textContent;
-        const currentDebt = parseFloat(debtText) || 0;
-        const creditLimit = parseFloat(limitText) || 0;
+        const currentDebt = parseFloat(document.getElementById("ci-debt").textContent) || 0;
+        const creditLimit = parseFloat(document.getElementById("ci-limit").textContent) || 0;
+        const currentAccount = parseFloat(document.getElementById("ci-account").textContent) || 0;
         const remaining = creditLimit - currentDebt;
-        if (totalVal > remaining) {
-            warningsContainer.innerHTML += '<div class="alert alert-danger"><strong>Предупреждение:</strong> Сумма заказа (' + totalVal.toFixed(2) + ' руб.) превышает остаток кредита (' + remaining.toFixed(2) + ' руб.)!</div>';
+        const effectiveTotal = Math.max(0, totalVal - Math.min(currentAccount, totalVal));
+        if (effectiveTotal > remaining) {
+            warningsContainer.innerHTML = '<div class="alert alert-danger"><strong>Ошибка:</strong> Сумма кредита (' + effectiveTotal.toFixed(2) + ' руб.) превышает остаток кредита (' + remaining.toFixed(2) + ' руб.)! Заказ невозможен.</div>';
             playAlert();
+            return;
+        }
+        // 90% soft warning
+        const futureDebt = currentDebt + effectiveTotal;
+        if (creditLimit > 0 && futureDebt >= creditLimit * 0.9) {
+            warningsContainer.innerHTML += '<div class="alert alert-warning"><strong>Внимание:</strong> После заказа долг клиента составит ' + futureDebt.toFixed(2) + ' руб. (' + (futureDebt / creditLimit * 100).toFixed(1) + '% от потолка кредита ' + creditLimit.toFixed(2) + ' руб.)</div>';
+        }
+    }
+
+    // Offset validation — can't offset more than current debt
+    if (saleType === "offset" && clientId) {
+        const totalVal = parseFloat(document.getElementById("order-total").textContent) || 0;
+        const currentDebt = parseFloat(document.getElementById("ci-debt").textContent) || 0;
+        if (totalVal > currentDebt) {
+            warningsContainer.innerHTML = '<div class="alert alert-danger"><strong>Ошибка:</strong> Сумма взаимозачёта (' + totalVal.toFixed(2) + ' руб.) превышает текущий долг (' + currentDebt.toFixed(2) + ' руб.)!</div>';
+            playAlert();
+            return;
         }
     }
 
@@ -455,11 +499,36 @@ function submitOrder() {
             return;
         }
         let msg = `<div class="alert alert-success">Заказ #${data.order_id} успешно оформлен!</div>`;
+        if (data.soft_warnings) {
+            data.soft_warnings.forEach(w => {
+                msg += `<div class="alert alert-warning"><strong>Внимание:</strong> ${w}</div>`;
+            });
+        }
         if (data.credit_warning) {
-            msg += `<div class="alert alert-danger"><strong>Внимание!</strong> ${data.credit_warning}</div>`;
+            msg += `<div class="alert alert-danger"><strong>⚠ Внимание!</strong> ${data.credit_warning}</div>`;
             playAlert();
         }
         warningsContainer.innerHTML = msg;
+        // Update client info display
+        if (data.current_debt !== undefined) {
+            const debtEl = document.getElementById("ci-debt");
+            const remEl = document.getElementById("ci-remaining");
+            debtEl.textContent = data.current_debt + " руб.";
+            remEl.textContent = data.credit_remaining + " руб.";
+            if (data.debt_warning) {
+                debtEl.style.color = "#e74c3c"; debtEl.style.fontWeight = "bold";
+                remEl.style.color = "#e74c3c"; remEl.style.fontWeight = "bold";
+            } else {
+                debtEl.style.color = ""; debtEl.style.fontWeight = "";
+                remEl.style.color = ""; remEl.style.fontWeight = "";
+            }
+        }
+        if (data.total_purchases !== undefined) {
+            document.getElementById("ci-total").textContent = data.total_purchases + " руб.";
+        }
+        if (data.current_account !== undefined) {
+            document.getElementById("ci-account").textContent = data.current_account + " руб.";
+        }
         // Reload after 2 seconds
         setTimeout(() => { window.location.href = "{% url 'order_list' %}"; }, 2000);
     })
