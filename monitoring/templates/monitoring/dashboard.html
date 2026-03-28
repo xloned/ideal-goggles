@@ -1,0 +1,182 @@
+{% extends "sales/base.html" %}
+{% block title %}АРМ Мониторинг — {{ config.name }}{% endblock %}
+{% block content %}
+<h1>АРМ специалиста по контролю и анализу</h1>
+<p style="color:#777; margin-bottom:20px;">Параметр: <strong>{{ config.name }}</strong> ({{ config.unit }}) | Допустимый диапазон: [{{ config.min_value }}; {{ config.max_value }}] | Порог предупреждения: {{ config.warning_percent }}%</p>
+
+<!-- Alerts -->
+<div id="alert-container">
+{% if alarm %}
+<div class="alert alert-danger" id="alarm-alert" style="font-size:16px;">
+    <strong>ТРЕВОГА!</strong> {{ alarm_msg }}
+</div>
+{% endif %}
+{% if warning %}
+<div class="alert alert-warning" id="warning-alert" style="font-size:16px;">
+    <strong>ПРЕДУПРЕЖДЕНИЕ!</strong> {{ warning_msg }}
+</div>
+{% endif %}
+</div>
+
+<!-- Controls -->
+<div class="card mb-10" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <a href="{% url 'monitoring_generate' %}?next=/monitoring/" class="btn btn-success" style="font-size:15px; padding:10px 24px;">Новое показание</a>
+    <a href="{% url 'monitoring_config' %}" class="btn btn-primary">Настройки</a>
+</div>
+
+<!-- Current + Previous values -->
+<div class="flex" style="flex-wrap:wrap;">
+    <div class="card flex-1" style="min-width:250px;">
+        <h2 style="margin-bottom:10px;">Текущее значение</h2>
+        {% if current %}
+        <div style="font-size:48px; font-weight:bold; color:{% if alarm %}#e74c3c{% elif warning %}#f39c12{% else %}#27ae60{% endif %};">
+            {{ current.value }} {{ config.unit }}
+        </div>
+        <p style="color:#999; margin-top:5px;">{{ current.timestamp }}</p>
+        {% else %}
+        <p style="color:#999;">Нет данных. Нажмите «Новое показание».</p>
+        {% endif %}
+    </div>
+
+    <div class="card flex-1" style="min-width:350px;">
+        <h2 style="margin-bottom:10px;">Предыдущие значения (N1={{ config.history_count }})</h2>
+        {% if previous %}
+        <table>
+            <thead><tr><th>#</th><th>Значение</th><th>Время</th></tr></thead>
+            <tbody>
+            {% for r in previous %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td style="font-weight:bold; {% if r.value < config.min_value or r.value > config.max_value %}color:#e74c3c;{% endif %}">{{ r.value }} {{ config.unit }}</td>
+                <td style="color:#777;">{{ r.timestamp }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color:#999;">Недостаточно данных.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Chart: current data -->
+<div class="card">
+    <h2 style="margin-bottom:10px;">График текущих данных</h2>
+    <div id="chart-current" style="text-align:center;">
+        <p style="color:#999;">Загрузка графика...</p>
+    </div>
+</div>
+
+<!-- Filtering controls -->
+<div class="card">
+    <h2 style="margin-bottom:10px;">Фильтрация данных (выборка)</h2>
+    <div style="display:flex; gap:15px; align-items:center; flex-wrap:wrap;">
+        <div class="form-group" style="margin-bottom:0;">
+            <label>Способ выборки</label>
+            <select id="filter-mode" style="padding:8px 12px;">
+                <option value="gt">Больше границы</option>
+                <option value="lt">Меньше границы</option>
+                <option value="multiple">Кратно числу</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+            <label>Граница / число</label>
+            <input type="number" id="filter-boundary" value="25" step="0.1" style="width:120px; padding:8px 12px;">
+        </div>
+        <button class="btn btn-primary" onclick="loadFilteredCharts()" style="margin-top:18px;">Применить</button>
+    </div>
+</div>
+
+<!-- Chart: filtered line -->
+<div class="card">
+    <h2 style="margin-bottom:10px;">График выборочных значений <span id="filtered-info" style="font-size:14px; color:#777;"></span></h2>
+    <div id="chart-filtered" style="text-align:center;">
+        <p style="color:#999;">Нажмите «Применить» для построения графика.</p>
+    </div>
+</div>
+
+<!-- Chart: filtered bar -->
+<div class="card">
+    <h2 style="margin-bottom:10px;">Диаграмма выборочных значений</h2>
+    <div id="chart-bar" style="text-align:center;">
+        <p style="color:#999;">Нажмите «Применить» для построения диаграммы.</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Sound alerts
+function playWarning() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 600; gain.gain.value = 0.3;
+        osc.start(); osc.stop(ctx.currentTime + 0.3);
+    } catch(e) {}
+}
+function playAlarm() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 1000; gain.gain.value = 0.4;
+        osc.type = "square";
+        osc.start(); osc.stop(ctx.currentTime + 0.5);
+    } catch(e) {}
+}
+
+{% if alarm %}playAlarm();{% endif %}
+{% if warning %}playWarning();{% endif %}
+
+// Flash effect for alarm
+{% if alarm %}
+let flash = true;
+setInterval(() => {
+    const el = document.getElementById("alarm-alert");
+    if (el) { el.style.opacity = flash ? "1" : "0.4"; flash = !flash; }
+}, 500);
+{% endif %}
+
+// Load current chart
+fetch("{% url 'monitoring_chart_current' %}")
+    .then(r => { if (r.status === 204) throw "no data"; return r.json(); })
+    .then(data => {
+        document.getElementById("chart-current").innerHTML = `<img src="data:image/png;base64,${data.image}" style="max-width:100%;">`;
+    })
+    .catch(() => {
+        document.getElementById("chart-current").innerHTML = '<p style="color:#999;">Недостаточно данных для графика.</p>';
+    });
+
+// Load filtered charts
+function loadFilteredCharts() {
+    const mode = document.getElementById("filter-mode").value;
+    const boundary = document.getElementById("filter-boundary").value;
+    const params = `?mode=${mode}&boundary=${boundary}`;
+
+    fetch("{% url 'monitoring_chart_filtered' %}" + params)
+        .then(r => r.json())
+        .then(data => {
+            if (data.image) {
+                document.getElementById("chart-filtered").innerHTML = `<img src="data:image/png;base64,${data.image}" style="max-width:100%;">`;
+                document.getElementById("filtered-info").textContent = `(${data.count} значений, среднее: ${data.avg})`;
+            } else {
+                document.getElementById("chart-filtered").innerHTML = '<p style="color:#999;">Нет данных, соответствующих фильтру.</p>';
+                document.getElementById("filtered-info").textContent = "";
+            }
+        });
+
+    fetch("{% url 'monitoring_chart_bar' %}" + params)
+        .then(r => r.json())
+        .then(data => {
+            if (data.image) {
+                document.getElementById("chart-bar").innerHTML = `<img src="data:image/png;base64,${data.image}" style="max-width:100%;">`;
+            } else {
+                document.getElementById("chart-bar").innerHTML = '<p style="color:#999;">Нет данных, соответствующих фильтру.</p>';
+            }
+        });
+}
+</script>
+{% endblock %}

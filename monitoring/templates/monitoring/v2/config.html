@@ -1,0 +1,45 @@
+{% extends "sales/v2/base.html" %}
+{% block title %}Настройки мониторинга{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Настройки параметра мониторинга</h1>
+    <p>Конфигурация датчика и пороговых значений</p>
+</div>
+<div class="v2-card" style="max-width:640px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Название параметра</label>
+            <input type="text" name="name" value="{{ config.name }}" required>
+        </div>
+        <div class="form-group">
+            <label>Единица измерения</label>
+            <input type="text" name="unit" value="{{ config.unit }}" required>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div class="form-group">
+                <label>Минимум допустимого диапазона</label>
+                <input type="number" step="0.01" name="min_value" value="{{ config.min_value }}" required>
+            </div>
+            <div class="form-group">
+                <label>Максимум допустимого диапазона</label>
+                <input type="number" step="0.01" name="max_value" value="{{ config.max_value }}" required>
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div class="form-group">
+                <label>Порог предупреждения (%)</label>
+                <input type="number" step="0.1" name="warning_percent" value="{{ config.warning_percent }}" min="5" max="40" required>
+            </div>
+            <div class="form-group">
+                <label>Количество предыдущих значений (N1)</label>
+                <input type="number" name="history_count" value="{{ config.history_count }}" min="2" max="10" required>
+            </div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button type="submit" class="btn btn-success">Сохранить</button>
+            <a href="{% url 'monitoring_dashboard_v2' %}" class="btn btn-outline">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

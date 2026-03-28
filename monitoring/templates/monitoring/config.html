@@ -1,0 +1,36 @@
+{% extends "sales/base.html" %}
+{% block title %}Настройки мониторинга{% endblock %}
+{% block content %}
+<h1>Настройки параметра мониторинга</h1>
+<div class="card" style="max-width:600px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Название параметра</label>
+            <input type="text" name="name" value="{{ config.name }}" required>
+        </div>
+        <div class="form-group">
+            <label>Единица измерения</label>
+            <input type="text" name="unit" value="{{ config.unit }}" required>
+        </div>
+        <div class="form-group">
+            <label>Минимум допустимого диапазона</label>
+            <input type="number" step="0.01" name="min_value" value="{{ config.min_value }}" required>
+        </div>
+        <div class="form-group">
+            <label>Максимум допустимого диапазона</label>
+            <input type="number" step="0.01" name="max_value" value="{{ config.max_value }}" required>
+        </div>
+        <div class="form-group">
+            <label>Порог предупреждения (%)</label>
+            <input type="number" step="0.1" name="warning_percent" value="{{ config.warning_percent }}" min="5" max="40" required>
+        </div>
+        <div class="form-group">
+            <label>Количество предыдущих значений (N1, от 2 до 10)</label>
+            <input type="number" name="history_count" value="{{ config.history_count }}" min="2" max="10" required>
+        </div>
+        <button type="submit" class="btn btn-success">Сохранить</button>
+        <a href="{% url 'monitoring_dashboard' %}" class="btn btn-danger">Отмена</a>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,187 @@
+{% extends "sales/v2/base.html" %}
+{% block title %}АРМ Мониторинг — {{ config.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>АРМ специалиста по контролю и анализу</h1>
+    <p>Параметр: <strong>{{ config.name }}</strong> ({{ config.unit }}) | Диапазон: [{{ config.min_value }}; {{ config.max_value }}] | Порог: {{ config.warning_percent }}%</p>
+</div>
+
+<!-- Alerts -->
+<div id="alert-container">
+{% if alarm %}
+<div class="alert alert-danger" id="alarm-alert" style="font-size:15px;">
+    <strong>ТРЕВОГА!</strong> {{ alarm_msg }}
+</div>
+{% endif %}
+{% if warning %}
+<div class="alert alert-warning" id="warning-alert" style="font-size:15px;">
+    <strong>ПРЕДУПРЕЖДЕНИЕ!</strong> {{ warning_msg }}
+</div>
+{% endif %}
+</div>
+
+<!-- Controls -->
+<div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+    <a href="{% url 'monitoring_generate' %}?next=/monitoring/v2/" class="btn btn-success" style="font-size:15px; padding:10px 24px;">Новое показание</a>
+    <a href="{% url 'monitoring_config_v2' %}" class="btn btn-primary">Настройки</a>
+</div>
+
+<!-- Current + Previous -->
+<div style="display:grid; grid-template-columns:1fr 2fr; gap:20px;">
+    <div class="v2-card">
+        <h2>Текущее значение</h2>
+        {% if current %}
+        <div style="font-size:42px; font-weight:700; color:{% if alarm %}#ef4444{% elif warning %}#f59e0b{% else %}#10b981{% endif %}; margin:12px 0;">
+            {{ current.value }} {{ config.unit }}
+        </div>
+        <p class="text-muted">{{ current.timestamp }}</p>
+        {% else %}
+        <p class="text-muted">Нет данных. Нажмите «Новое показание».</p>
+        {% endif %}
+    </div>
+
+    <div class="v2-card">
+        <h2>Предыдущие значения (N1={{ config.history_count }})</h2>
+        {% if previous %}
+        <table>
+            <thead><tr><th>#</th><th>Значение</th><th>Время</th><th>Статус</th></tr></thead>
+            <tbody>
+            {% for r in previous %}
+            <tr>
+                <td class="text-muted">{{ forloop.counter }}</td>
+                <td style="font-weight:600;">{{ r.value }} {{ config.unit }}</td>
+                <td class="text-muted">{{ r.timestamp }}</td>
+                <td>
+                    {% if r.value < config.min_value or r.value > config.max_value %}
+                    <span class="badge badge-red">Вне нормы</span>
+                    {% else %}
+                    <span class="badge badge-green">Норма</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">Недостаточно данных.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Chart: current data -->
+<div class="v2-card">
+    <h2>График текущих данных</h2>
+    <div id="chart-current" style="text-align:center;">
+        <p class="text-muted">Загрузка графика...</p>
+    </div>
+</div>
+
+<!-- Filtering -->
+<div class="v2-card">
+    <h2>Фильтрация данных (выборка)</h2>
+    <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+        <div class="form-group" style="margin-bottom:0; min-width:200px;">
+            <label>Способ выборки</label>
+            <select id="filter-mode">
+                <option value="gt">Больше границы</option>
+                <option value="lt">Меньше границы</option>
+                <option value="multiple">Кратно числу</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0; min-width:150px;">
+            <label>Граница / число</label>
+            <input type="number" id="filter-boundary" value="25" step="0.1">
+        </div>
+        <button class="btn btn-primary" onclick="loadFilteredCharts()" style="height:42px;">Применить</button>
+    </div>
+</div>
+
+<!-- Chart: filtered line -->
+<div class="v2-card">
+    <h2>График выборочных значений <span id="filtered-info" class="text-muted" style="font-size:14px;"></span></h2>
+    <div id="chart-filtered" style="text-align:center;">
+        <p class="text-muted">Нажмите «Применить» для построения графика.</p>
+    </div>
+</div>
+
+<!-- Chart: filtered bar -->
+<div class="v2-card">
+    <h2>Диаграмма выборочных значений</h2>
+    <div id="chart-bar" style="text-align:center;">
+        <p class="text-muted">Нажмите «Применить» для построения диаграммы.</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function playWarning() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 600; gain.gain.value = 0.3;
+        osc.start(); osc.stop(ctx.currentTime + 0.3);
+    } catch(e) {}
+}
+function playAlarm() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 1000; gain.gain.value = 0.4;
+        osc.type = "square";
+        osc.start(); osc.stop(ctx.currentTime + 0.5);
+    } catch(e) {}
+}
+
+{% if alarm %}playAlarm();{% endif %}
+{% if warning %}playWarning();{% endif %}
+
+{% if alarm %}
+let flash = true;
+setInterval(() => {
+    const el = document.getElementById("alarm-alert");
+    if (el) { el.style.opacity = flash ? "1" : "0.4"; flash = !flash; }
+}, 500);
+{% endif %}
+
+fetch("{% url 'monitoring_chart_current' %}")
+    .then(r => { if (r.status === 204) throw "no data"; return r.json(); })
+    .then(data => {
+        document.getElementById("chart-current").innerHTML = `<img src="data:image/png;base64,${data.image}" style="max-width:100%;">`;
+    })
+    .catch(() => {
+        document.getElementById("chart-current").innerHTML = '<p class="text-muted">Недостаточно данных для графика.</p>';
+    });
+
+function loadFilteredCharts() {
+    const mode = document.getElementById("filter-mode").value;
+    const boundary = document.getElementById("filter-boundary").value;
+    const params = `?mode=${mode}&boundary=${boundary}`;
+
+    fetch("{% url 'monitoring_chart_filtered' %}" + params)
+        .then(r => r.json())
+        .then(data => {
+            if (data.image) {
+                document.getElementById("chart-filtered").innerHTML = `<img src="data:image/png;base64,${data.image}" style="max-width:100%;">`;
+                document.getElementById("filtered-info").textContent = `(${data.count} значений, среднее: ${data.avg})`;
+            } else {
+                document.getElementById("chart-filtered").innerHTML = '<p class="text-muted">Нет данных, соответствующих фильтру.</p>';
+                document.getElementById("filtered-info").textContent = "";
+            }
+        });
+
+    fetch("{% url 'monitoring_chart_bar' %}" + params)
+        .then(r => r.json())
+        .then(data => {
+            if (data.image) {
+                document.getElementById("chart-bar").innerHTML = `<img src="data:image/png;base64,${data.image}" style="max-width:100%;">`;
+            } else {
+                document.getElementById("chart-bar").innerHTML = '<p class="text-muted">Нет данных, соответствующих фильтру.</p>';
+            }
+        });
+}
+</script>
+{% endblock %}
