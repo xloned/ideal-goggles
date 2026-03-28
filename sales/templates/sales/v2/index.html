@@ -1,0 +1,30 @@
+{% extends "sales/v2/base.html" %}
+{% block title %}АРМ оператора по продажам{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Панель управления</h1>
+    <p>Автоматизированное рабочее место оператора по продажам</p>
+</div>
+<div class="dash-grid">
+    <a href="{% url 'client_list_v2' %}" class="dash-card">
+        <div class="dash-icon blue">&#128101;</div>
+        <h3>База клиентов</h3>
+        <p>Просмотр, поиск и редактирование данных клиентов.</p>
+    </a>
+    <a href="{% url 'product_list_v2' %}" class="dash-card">
+        <div class="dash-icon purple">&#128230;</div>
+        <h3>База товаров</h3>
+        <p>Склад товаров: наименования, цены, остатки.</p>
+    </a>
+    <a href="{% url 'order_create_v2' %}" class="dash-card">
+        <div class="dash-icon green">&#128221;</div>
+        <h3>Новый заказ</h3>
+        <p>Создание заказа с выбором клиента, товаров и вида оплаты.</p>
+    </a>
+    <a href="{% url 'report_v2' %}" class="dash-card">
+        <div class="dash-icon orange">&#128202;</div>
+        <h3>Отчёт</h3>
+        <p>Сводка покупок по клиентам с общими суммами.</p>
+    </a>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "sales/v2/base.html" %}
+{% block title %}{% if product %}Редактирование товара{% else %}Новый товар{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{% if product %}Редактирование товара{% else %}Добавление товара{% endif %}</h1>
+    <p>{% if product %}{{ product.name }}{% else %}Заполните данные нового товара{% endif %}</p>
+</div>
+
+{% if errors %}
+<div class="alert alert-danger">
+    <strong>Ошибки:</strong>
+    <ul style="margin:8px 0 0 20px;">
+    {% for e in errors %}
+        <li>{{ e }}</li>
+    {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<div class="v2-card" style="max-width:640px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Наименование товара</label>
+            {% if form_data %}
+            <input type="text" name="name" value="{{ form_data.name }}" required>
+            {% elif product %}
+            <input type="text" name="name" value="{{ product.name }}" required>
+            {% else %}
+            <input type="text" name="name" value="" required>
+            {% endif %}
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div class="form-group">
+                <label>Цена (руб.)</label>
+                {% if form_data %}
+                <input type="number" step="0.01" name="price" value="{{ form_data.price }}" required>
+                {% elif product %}
+                <input type="number" step="0.01" name="price" value="{{ product.price }}" required>
+                {% else %}
+                <input type="number" step="0.01" name="price" value="0" required>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label>Остаток на складе</label>
+                {% if form_data %}
+                <input type="number" name="stock" value="{{ form_data.stock }}" required>
+                {% elif product %}
+                <input type="number" name="stock" value="{{ product.stock }}" required>
+                {% else %}
+                <input type="number" name="stock" value="0" required>
+                {% endif %}
+            </div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button type="submit" class="btn btn-success">Сохранить</button>
+            <a href="{% url 'product_list_v2' %}" class="btn btn-outline">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "sales/v2/base.html" %}
+{% block title %}Заказы{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Список заказов</h1>
+    <p>История всех оформленных заказов</p>
+</div>
+
+<div style="margin-bottom:20px;">
+    <a href="{% url 'order_create_v2' %}" class="btn btn-success">+ Новый заказ</a>
+</div>
+
+{% if orders %}
+{% for order in orders %}
+<div class="v2-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="margin:0;">Заказ #{{ order.pk }} — {{ order.client.name }}</h3>
+        <span class="badge badge-blue">{{ order.get_sale_type_display }}</span>
+    </div>
+    <p class="text-muted" style="margin-bottom:12px;">{{ order.created_at }}</p>
+    <table>
+        <thead>
+            <tr><th>Товар</th><th>Цена</th><th>Кол-во</th><th>Сумма</th></tr>
+        </thead>
+        <tbody>
+            {% for item in order.items.all %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.price }} руб.</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.line_total }} руб.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" style="text-align:right; font-weight:700;">Итого:</td>
+                <td style="font-weight:700; color:#667eea;">{{ order.total_sum }} руб.</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endfor %}
+{% else %}
+<div class="v2-card">
+    <p class="text-muted" style="text-align:center; padding:20px 0;">Заказов пока нет.</p>
+</div>
+{% endif %}
+{% endblock %}

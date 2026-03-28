@@ -1,0 +1,65 @@
+{% extends "sales/v2/base.html" %}
+{% block title %}Отчёт по клиентам{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Отчёт</h1>
+    <p>Сводка покупок по клиентам с финансовыми показателями</p>
+</div>
+
+{% for entry in report_data %}
+<div class="v2-card">
+    <h3 style="margin-bottom:16px;">{{ entry.client.name }}</h3>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:16px; margin-bottom:16px;">
+        <div>
+            <div class="stat-label">Общий счёт покупок</div>
+            <div class="stat-value">{{ entry.client.total_purchases }}</div>
+        </div>
+        <div>
+            <div class="stat-label">Текущий счёт</div>
+            <div class="stat-value">{{ entry.client.current_account }}</div>
+        </div>
+        <div>
+            <div class="stat-label">Потолок кредита</div>
+            <div class="stat-value">{{ entry.client.credit_limit }}</div>
+        </div>
+        <div>
+            <div class="stat-label">Текущий долг</div>
+            <div class="stat-value" {% if entry.client.debt_warning %}style="color:#ef4444;"{% endif %}>{{ entry.client.current_debt }}</div>
+        </div>
+        <div>
+            <div class="stat-label">Остаток кредита</div>
+            <div class="stat-value" {% if entry.client.debt_warning %}style="color:#ef4444;"{% endif %}>{{ entry.client.credit_remaining }}</div>
+        </div>
+        <div>
+            <div class="stat-label">Сумма всех заказов</div>
+            <div class="stat-value" style="color:#667eea;">{{ entry.total }}</div>
+        </div>
+    </div>
+
+    {% if entry.orders %}
+    <table>
+        <thead>
+            <tr><th>Заказ</th><th>Вид продажи</th><th>Дата</th><th>Сумма</th></tr>
+        </thead>
+        <tbody>
+            {% for oi in entry.orders %}
+            <tr>
+                <td>#{{ oi.order.pk }}</td>
+                <td><span class="badge badge-blue">{{ oi.order.get_sale_type_display }}</span></td>
+                <td>{{ oi.order.created_at }}</td>
+                <td style="font-weight:600;">{{ oi.order.total_sum }} руб.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">Заказов нет.</p>
+    {% endif %}
+</div>
+{% empty %}
+<div class="v2-card">
+    <p class="text-muted" style="text-align:center; padding:20px 0;">Данных нет.</p>
+</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "sales/v2/base.html" %}
+{% block title %}{% if client %}Редактирование клиента{% else %}Новый клиент{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{% if client %}Редактирование клиента{% else %}Добавление клиента{% endif %}</h1>
+    <p>{% if client %}{{ client.name }}{% else %}Заполните данные нового клиента{% endif %}</p>
+</div>
+
+<div class="v2-card" style="max-width:640px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Имя клиента</label>
+            <input type="text" name="name" value="{{ client.name|default:'' }}" required>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div class="form-group">
+                <label>Общий счёт покупок (руб.)</label>
+                <input type="number" step="0.01" name="total_purchases" value="{{ client.total_purchases|default:'0' }}">
+            </div>
+            <div class="form-group">
+                <label>Текущий счёт (руб.)</label>
+                <input type="number" step="0.01" name="current_account" value="{{ client.current_account|default:'0' }}">
+            </div>
+            <div class="form-group">
+                <label>Потолок кредита (руб.)</label>
+                <input type="number" step="0.01" name="credit_limit" value="{{ client.credit_limit|default:'0' }}">
+            </div>
+            <div class="form-group">
+                <label>Текущий долг (руб.)</label>
+                <input type="number" step="0.01" name="current_debt" value="{{ client.current_debt|default:'0' }}">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Комментарий</label>
+            <textarea name="comment" rows="3">{{ client.comment|default:'' }}</textarea>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button type="submit" class="btn btn-success">Сохранить</button>
+            <a href="{% url 'client_list_v2' %}" class="btn btn-outline">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

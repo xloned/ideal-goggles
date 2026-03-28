@@ -1,0 +1,66 @@
+{% extends "sales/v2/base.html" %}
+{% block title %}Клиенты{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>База клиентов</h1>
+    <p>Управление клиентской базой</p>
+</div>
+
+<div class="v2-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+        <form method="get" class="search-bar" style="flex:1; min-width:300px; margin-bottom:0;">
+            <input type="text" name="q" value="{{ query }}" placeholder="Поиск по имени клиента...">
+            <button type="submit" class="btn btn-primary">Найти</button>
+            {% if query %}<a href="{% url 'client_list_v2' %}" class="btn btn-outline">Сбросить</a>{% endif %}
+        </form>
+        <a href="{% url 'client_add_v2' %}" class="btn btn-success">+ Добавить клиента</a>
+    </div>
+
+    {% if clients %}
+    <div style="overflow-x:auto;">
+    <table>
+        <thead>
+            <tr>
+                <th>Клиент</th>
+                <th>Общий счёт покупок</th>
+                <th>Текущий счёт</th>
+                <th>Потолок кредита</th>
+                <th>Текущий долг</th>
+                <th>Остаток кредита</th>
+                <th>Комментарий</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in clients %}
+            <tr>
+                <td><strong>{{ c.name }}</strong></td>
+                <td>{{ c.total_purchases }} руб.</td>
+                <td>{{ c.current_account }} руб.</td>
+                <td>{{ c.credit_limit }} руб.</td>
+                <td>
+                    {% if c.debt_warning %}
+                    <span class="badge badge-red">{{ c.current_debt }} руб.</span>
+                    {% else %}
+                    {{ c.current_debt }} руб.
+                    {% endif %}
+                </td>
+                <td>
+                    {% if c.debt_warning %}
+                    <span class="text-danger">{{ c.credit_remaining }} руб.</span>
+                    {% else %}
+                    {{ c.credit_remaining }} руб.
+                    {% endif %}
+                </td>
+                <td class="text-muted">{{ c.comment|truncatewords:10 }}</td>
+                <td><a href="{% url 'client_edit_v2' c.pk %}" class="btn btn-outline btn-sm">Ред.</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="text-muted" style="padding:20px 0; text-align:center;">Клиенты не найдены.</p>
+    {% endif %}
+</div>
+{% endblock %}

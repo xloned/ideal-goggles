@@ -1,0 +1,50 @@
+{% extends "sales/v2/base.html" %}
+{% block title %}Товары на складе{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>База товаров</h1>
+    <p>Склад: наименования, цены, остатки</p>
+</div>
+
+<div class="v2-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="margin:0;">Каталог товаров</h2>
+        <a href="{% url 'product_add_v2' %}" class="btn btn-success">+ Добавить товар</a>
+    </div>
+
+    {% if products %}
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Наименование</th>
+                <th>Цена (руб.)</th>
+                <th>Остаток</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in products %}
+            <tr>
+                <td class="text-muted">{{ p.pk }}</td>
+                <td><strong>{{ p.name }}</strong></td>
+                <td>{{ p.price }} руб.</td>
+                <td>
+                    {% if p.stock > 10 %}
+                    <span class="badge badge-green">{{ p.stock }} шт.</span>
+                    {% elif p.stock > 0 %}
+                    <span class="badge badge-red">{{ p.stock }} шт.</span>
+                    {% else %}
+                    <span class="badge badge-red">Нет в наличии</span>
+                    {% endif %}
+                </td>
+                <td><a href="{% url 'product_edit_v2' p.pk %}" class="btn btn-outline btn-sm">Ред.</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted" style="padding:20px 0; text-align:center;">Товары отсутствуют.</p>
+    {% endif %}
+</div>
+{% endblock %}
