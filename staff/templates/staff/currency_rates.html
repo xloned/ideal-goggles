@@ -1,0 +1,125 @@
+{% extends "staff/base_staff.html" %}
+{% block title %}Курсы валют ЦБ РФ — Лаб 5{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Курсы валют ЦБ РФ</h1>
+        <p class="subtitle">
+            Лабораторная работа №5 — Использование интернет-ресурсов.
+            Данные получены с сервера ЦБ РФ в режиме реального времени.
+        </p>
+    </div>
+    <div>
+        <a href="{% url 'staff:currency_rates' %}" class="btn">&#8635; Обновить</a>
+    </div>
+</div>
+
+{% if fetched_at %}
+<p style="color:#888; font-size:13px; margin-bottom:16px;">
+    Источник: API ЦБ РФ (cbr-xml-daily.ru) · Актуально на: <strong>{{ fetched_at }}</strong>
+</p>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-danger" style="margin-bottom:20px;">
+    &#9888; {{ error }}<br>
+    <small>Проверьте подключение к интернету. URL: https://www.cbr-xml-daily.ru/daily_json.js</small>
+</div>
+{% endif %}
+
+{% if rates %}
+<!-- Карточки валют -->
+<div class="dash-grid" style="margin-bottom:28px;">
+    {% for rate in rates %}
+    <div class="dash-card" style="text-align:center; padding:24px 16px;">
+        <div style="font-size:36px; font-weight:800; color:var(--accent); margin-bottom:4px;">
+            {% if rate.code == 'USD' %}&#128904;{% elif rate.code == 'EUR' %}&#8364;{% elif rate.code == 'CNY' %}&#20803;{% else %}&#128178;{% endif %}
+        </div>
+        <div style="font-size:22px; font-weight:700; margin-bottom:2px;">{{ rate.code }}</div>
+        <div style="color:#888; font-size:13px; margin-bottom:12px;">{{ rate.name }}</div>
+        <div style="font-size:32px; font-weight:800; margin-bottom:8px; color:#2c3e50;">
+            {{ rate.value }} <span style="font-size:16px; font-weight:400;">₽</span>
+        </div>
+        <div style="font-size:12px; color:#888; margin-bottom:8px;">
+            за {{ rate.nominal }} единицу
+        </div>
+        <div style="font-size:14px; font-weight:600;
+            color:{% if rate.change >= 0 %}#27ae60{% else %}#e74c3c{% endif %};">
+            {% if rate.change >= 0 %}▲{% else %}▼{% endif %}
+            {{ rate.change|floatformat:4 }} ₽
+            ({% if rate.change_pct >= 0 %}+{% endif %}{{ rate.change_pct }}%)
+        </div>
+        <div style="font-size:12px; color:#bbb; margin-top:4px;">
+            вчера: {{ rate.previous }} ₽
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Таблица -->
+<div class="card">
+    <div class="card-header"><h3>Детальная таблица</h3></div>
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Код</th>
+                    <th>Наименование</th>
+                    <th>Номинал</th>
+                    <th>Курс ЦБ (₽)</th>
+                    <th>Вчера (₽)</th>
+                    <th>Изменение</th>
+                    <th>Изменение (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rate in rates %}
+                <tr>
+                    <td><strong>{{ rate.code }}</strong></td>
+                    <td>{{ rate.name }}</td>
+                    <td>{{ rate.nominal }}</td>
+                    <td style="font-weight:700;">{{ rate.value }}</td>
+                    <td style="color:#888;">{{ rate.previous }}</td>
+                    <td style="font-weight:600; color:{% if rate.change >= 0 %}#27ae60{% else %}#e74c3c{% endif %};">
+                        {% if rate.change >= 0 %}+{% endif %}{{ rate.change }}
+                    </td>
+                    <td>
+                        <span class="badge {% if rate.change_pct >= 0 %}badge-green{% else %}" style="background:#e74c3c;{% endif %}">
+                            {% if rate.change_pct >= 0 %}+{% endif %}{{ rate.change_pct }}%
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endif %}
+
+<!-- Пояснение технической реализации -->
+<div class="card" style="margin-top:20px; background:#fafafa;">
+    <div class="card-header"><h3>Техническая реализация (Лаб. №5)</h3></div>
+    <div style="padding:14px 18px; font-size:13px; color:#555; line-height:1.7;">
+        <p>
+            Данные получаются через модуль <code>urllib.request</code> (стандартная библиотека Python).
+            Это Python-аналог компонента <code>TNMHTTP</code> из Delphi, упомянутого в задании.
+        </p>
+        <p>
+            API: <code>https://www.cbr-xml-daily.ru/daily_json.js</code> (неофициальный JSON-проки ЦБ РФ).
+            При каждом обновлении страницы выполняется HTTP GET-запрос к серверу ЦБ РФ.
+        </p>
+        <p>
+            Вариант 1 задания: показ 3 фиксированных валют ({{ preset_currencies|join:", " }}).
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Автообновление страницы каждые 5 минут
+    setTimeout(function(){ location.reload(); }, 300000);
+</script>
+{% endblock %}

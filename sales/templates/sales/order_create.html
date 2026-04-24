@@ -1,13 +1,16 @@
 {% extends "sales/base.html" %}
 {% block title %}Новый заказ{% endblock %}
 {% block content %}
-<h1>Создание нового заказа</h1>
+<div class="page-header">
+    <h1>Создание нового заказа</h1>
+    <p>Выберите клиента, вид продажи и добавьте позиции</p>
+</div>
 
 <div id="warnings-container"></div>
 
-<div class="flex" style="flex-wrap: wrap;">
-    <!-- Left: Client selection -->
-    <div class="card flex-1" style="min-width:350px;">
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <!-- Client selection -->
+    <div class="card">
         <h2 style="margin-bottom:15px;">Клиент</h2>
         <div class="form-group">
             <label>Поиск клиента по имени</label>
@@ -28,8 +31,8 @@
         </div>
     </div>
 
-    <!-- Right: Sale type -->
-    <div class="card flex-1" style="min-width:300px;">
+    <!-- Sale type -->
+    <div class="card">
         <h2 style="margin-bottom:15px;">Вид продажи</h2>
         <div class="form-group">
             <select id="sale-type" style="font-size:16px; padding:10px;">

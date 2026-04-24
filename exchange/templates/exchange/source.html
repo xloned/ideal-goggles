@@ -1,0 +1,164 @@
+{% extends "exchange/base_exchange.html" %}
+{% block title %}Источник — Лаб 3{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Программа 1 — Источник</h1>
+        <p class="subtitle">Ввод данных о продажах и экспорт в файл обмена (exchange_source.json)</p>
+    </div>
+</div>
+
+<!-- Пояснение задания -->
+<div class="card" style="margin-bottom:20px; border-left:4px solid var(--accent);">
+    <div style="padding:14px 18px;">
+        <strong>Вариант 6:</strong> Продажи товаров через кассовый аппарат.<br>
+        Поля: наименование, группа, количество, цена продажи, цена закупки, скидка.
+        После заполнения — нажмите <b>«Выгрузить в файл»</b>, чтобы передать данные в Сервер.
+    </div>
+</div>
+
+<!-- Форма добавления записи -->
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-header"><h3>Добавить запись продажи</h3></div>
+    <div style="padding:18px;">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                <div>
+                    <label>{{ form.product_name.label }}</label>
+                    {{ form.product_name }}
+                    {% if form.product_name.errors %}
+                        <div class="text-danger" style="font-size:12px;">{{ form.product_name.errors }}</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <label>{{ form.product_group.label }}</label>
+                    {{ form.product_group }}
+                    {% if form.product_group.errors %}
+                        <div class="text-danger" style="font-size:12px;">{{ form.product_group.errors }}</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <label>{{ form.quantity.label }}</label>
+                    {{ form.quantity }}
+                    {% if form.quantity.errors %}
+                        <div class="text-danger" style="font-size:12px;">{{ form.quantity.errors }}</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <label>{{ form.selling_price.label }}</label>
+                    {{ form.selling_price }}
+                    {% if form.selling_price.errors %}
+                        <div class="text-danger" style="font-size:12px;">{{ form.selling_price.errors }}</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <label>{{ form.purchase_price.label }}</label>
+                    {{ form.purchase_price }}
+                    {% if form.purchase_price.errors %}
+                        <div class="text-danger" style="font-size:12px;">{{ form.purchase_price.errors }}</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <label>{{ form.discount.label }}</label>
+                    {{ form.discount }}
+                    {% if form.discount.errors %}
+                        <div class="text-danger" style="font-size:12px;">{{ form.discount.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% if form.non_field_errors %}
+                <div class="alert alert-warning" style="margin-top:10px;">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <div style="margin-top:16px;">
+                <button type="submit" class="btn">Добавить запись</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Таблица записей -->
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <h3>Записи продаж ({{ records.count }})</h3>
+        <div>
+            <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="export">
+                <button type="submit" class="btn" style="background:#27ae60;">
+                    &#128229; Выгрузить в файл
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% if source_exists %}
+        <div style="padding:8px 18px; background:#eafaf1; font-size:13px; color:#27ae60; border-bottom:1px solid #d5f5e3;">
+            &#10003; Файл exchange_source.json создан — данные готовы для Сервера.
+        </div>
+    {% endif %}
+
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Наименование</th>
+                    <th>Группа</th>
+                    <th>Кол-во</th>
+                    <th>Цена продажи</th>
+                    <th>Цена закупки</th>
+                    <th>Скидка %</th>
+                    <th>Выручка</th>
+                    <th>Прибыль</th>
+                    <th>Выгружен</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in records %}
+                <tr>
+                    <td>{{ rec.product_name }}</td>
+                    <td><span class="badge badge-blue">{{ rec.product_group }}</span></td>
+                    <td>{{ rec.quantity }}</td>
+                    <td>{{ rec.selling_price }} ₽</td>
+                    <td>{{ rec.purchase_price }} ₽</td>
+                    <td>{{ rec.discount }}%</td>
+                    <td>{{ rec.revenue|floatformat:2 }} ₽</td>
+                    <td style="color:{% if rec.profit >= 0 %}#27ae60{% else %}#e74c3c{% endif %}; font-weight:600;">
+                        {{ rec.profit|floatformat:2 }} ₽
+                    </td>
+                    <td>
+                        {% if rec.exported %}
+                            <span class="badge badge-green">&#10003;</span>
+                        {% else %}
+                            <span class="badge" style="background:#95a5a6;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'exchange:source_delete' rec.pk %}"
+                           class="btn btn-outline"
+                           style="padding:3px 10px; font-size:12px; color:#e74c3c; border-color:#e74c3c;"
+                           onclick="return confirm('Удалить запись?')">&#128465;</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="10" style="text-align:center; color:#999; padding:24px;">
+                    Нет записей. Добавьте данные с помощью формы выше.
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Стрелка к следующему шагу -->
+{% if source_exists %}
+<div style="text-align:center; padding:16px;">
+    <a href="{% url 'exchange:server' %}" class="btn" style="font-size:16px; padding:12px 32px;">
+        Перейти к Серверу &#8594;
+    </a>
+</div>
+{% endif %}
+{% endblock %}

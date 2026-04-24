@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Лаб 3 — Обмен данными{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/common.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v1.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v2.css' %}">
+    <script>
+        (function(){
+            var t = localStorage.getItem('arm-theme') || 'theme-v1';
+            document.documentElement.style.visibility = 'hidden';
+            document.addEventListener('DOMContentLoaded', function() {
+                document.body.className = t;
+                document.documentElement.style.visibility = '';
+            });
+        })();
+    </script>
+</head>
+<body>
+    <!-- V1: Горизонтальная навигация -->
+    <div class="nav-top">
+        <span class="brand">Лаб 3: Обмен данными</span>
+        <a href="{% url 'index' %}">&#8592; АРМ Продажи</a>
+        <a href="{% url 'exchange:source' %}" {% if request.resolver_match.url_name == 'source' %}style="background:rgba(255,255,255,.2)"{% endif %}>
+            Источник
+        </a>
+        <a href="{% url 'exchange:server' %}" {% if request.resolver_match.url_name == 'server' %}style="background:rgba(255,255,255,.2)"{% endif %}>
+            Сервер
+        </a>
+        <a href="{% url 'exchange:visualizer' %}" {% if request.resolver_match.url_name == 'visualizer' %}style="background:rgba(255,255,255,.2)"{% endif %}>
+            Визуализатор
+        </a>
+        <button class="theme-toggle">Дизайн 2</button>
+    </div>
+
+    <!-- V2: Боковая навигация -->
+    <aside class="sidebar">
+        <div class="brand">
+            Лаб 3
+            <small>Обмен данными</small>
+        </div>
+        <nav>
+            <a href="{% url 'index' %}"><span class="icon">&#8592;</span> АРМ Продажи</a>
+            <a href="{% url 'exchange:source' %}"><span class="icon">&#128229;</span> Программа 1: Источник</a>
+            <a href="{% url 'exchange:server' %}"><span class="icon">&#9881;</span> Программа 2: Сервер</a>
+            <a href="{% url 'exchange:visualizer' %}"><span class="icon">&#128202;</span> Программа 3: Визуализатор</a>
+        </nav>
+        <button class="theme-toggle">Дизайн 1</button>
+    </aside>
+
+    <div class="main-content">
+        <div class="content-wrap">
+            {% if messages %}
+                {% for msg in messages %}
+                    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="{% static 'js/theme.js' %}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

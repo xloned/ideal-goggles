@@ -1,0 +1,153 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход — Лаб 4</title>
+    <link rel="stylesheet" href="{% static 'css/common.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v1.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v2.css' %}">
+    <script>
+        (function(){
+            var t = localStorage.getItem('arm-theme') || 'theme-v1';
+            document.documentElement.style.visibility = 'hidden';
+            document.addEventListener('DOMContentLoaded', function(){
+                document.body.className = t;
+                document.documentElement.style.visibility = '';
+            });
+        })();
+    </script>
+    <style>
+        .login-wrap {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .login-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,.12);
+            padding: 40px 36px;
+            width: 100%;
+            max-width: 420px;
+        }
+        .login-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: #2c3e50;
+        }
+        .login-subtitle {
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 28px;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display:block; margin-bottom:6px; font-size:13px; font-weight:600; color:#444; }
+        .form-group input { width:100%; box-sizing:border-box; }
+        .roles-info {
+            background:#f0f4ff;
+            border-radius:8px;
+            padding:12px 14px;
+            margin-top:20px;
+            font-size:12px;
+            color:#555;
+        }
+        .roles-info h4 { margin:0 0 8px; font-size:13px; color:#333; }
+        .role-row { display:flex; justify-content:space-between; padding:2px 0; }
+        .role-label { font-weight:600; }
+        .lockout-bar {
+            background:#fdecea;
+            border:1px solid #f5c6cb;
+            border-radius:8px;
+            padding:12px 16px;
+            margin-bottom:16px;
+            color:#721c24;
+            font-size:14px;
+        }
+    </style>
+</head>
+<body>
+<div class="login-wrap">
+    <div class="login-card">
+        <div class="login-title">&#128274; Вход в систему</div>
+        <div class="login-subtitle">Лабораторная работа №4 — Разграничение доступа</div>
+
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
+            {% endfor %}
+        {% endif %}
+
+        {% if locked %}
+        <div class="lockout-bar">
+            &#128683; Вход заблокирован на {{ seconds_left }} сек. из-за превышения числа попыток.
+            <div id="countdown" style="margin-top:4px; font-weight:600; font-size:16px;">{{ seconds_left }}</div>
+        </div>
+        {% else %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>{{ form.username.label }}</label>
+                {{ form.username }}
+            </div>
+            <div class="form-group">
+                <label>{{ form.password.label }}</label>
+                {{ form.password }}
+            </div>
+            <button type="submit" name="action" value="login" class="btn" style="width:100%; margin-top:8px;">
+                Войти
+            </button>
+        </form>
+
+        <div style="text-align:center; margin-top:14px;">
+            <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" name="action" value="guest" class="btn btn-outline" style="width:100%;">
+                    &#128100; Войти как Гость (без пароля)
+                </button>
+            </form>
+        </div>
+
+        {% endif %}
+
+        <div class="roles-info">
+            <h4>Роли и права доступа:</h4>
+            <div class="role-row">
+                <span class="role-label">&#128081; Директор</span>
+                <span>Полный доступ (CRUD)</span>
+            </div>
+            <div class="role-row">
+                <span class="role-label">&#128084; Заместитель</span>
+                <span>Просмотр + редактирование</span>
+            </div>
+            <div class="role-row">
+                <span class="role-label">&#128203; Секретарь</span>
+                <span>Только просмотр (все поля)</span>
+            </div>
+            <div class="role-row">
+                <span class="role-label">&#128100; Гость</span>
+                <span>ФИО, должность, раб. тел.</span>
+            </div>
+            <div style="margin-top:8px; color:#888;">Блокировка после 3 неверных попыток (5 мин.)</div>
+        </div>
+    </div>
+</div>
+
+{% if locked %}
+<script>
+    var sec = {{ seconds_left }};
+    var el = document.getElementById('countdown');
+    var timer = setInterval(function(){
+        sec--;
+        if (sec <= 0) { clearInterval(timer); location.reload(); }
+        else el.textContent = sec + ' сек.';
+    }, 1000);
+</script>
+{% endif %}
+</body>
+</html>

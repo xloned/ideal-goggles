@@ -1,0 +1,55 @@
+{% extends "staff/base_staff.html" %}
+{% block title %}{{ title }} — Лаб 4{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ title }}</h1>
+        <p class="subtitle">Лабораторная работа №4 — Управление сотрудниками</p>
+    </div>
+</div>
+
+<div class="card" style="max-width:600px;">
+    <div style="padding:24px;">
+        <form method="post">
+            {% csrf_token %}
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div>
+                    <label>{{ form.last_name.label }}</label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}
+                        <div style="color:#e74c3c; font-size:12px; margin-top:4px;">{{ form.last_name.errors }}</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <label>{{ form.first_name_patronymic.label }}</label>
+                    {{ form.first_name_patronymic }}
+                    {% if form.first_name_patronymic.errors %}
+                        <div style="color:#e74c3c; font-size:12px; margin-top:4px;">{{ form.first_name_patronymic.errors }}</div>
+                    {% endif %}
+                </div>
+                <div style="grid-column:1/-1;">
+                    <label>{{ form.position.label }}</label>
+                    {{ form.position }}
+                </div>
+                <div style="grid-column:1/-1;">
+                    <label>{{ form.address.label }}</label>
+                    {{ form.address }}
+                </div>
+                <div>
+                    <label>{{ form.personal_phone.label }}</label>
+                    {{ form.personal_phone }}
+                </div>
+                <div>
+                    <label>{{ form.work_phone.label }}</label>
+                    {{ form.work_phone }}
+                </div>
+            </div>
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <button type="submit" class="btn">Сохранить</button>
+                <a href="{% url 'staff:employee_list' %}" class="btn btn-outline">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

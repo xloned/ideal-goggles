@@ -1,0 +1,80 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Лаб 4 — Управление доступом{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/common.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v1.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v2.css' %}">
+    <script>
+        (function(){
+            var t = localStorage.getItem('arm-theme') || 'theme-v1';
+            document.documentElement.style.visibility = 'hidden';
+            document.addEventListener('DOMContentLoaded', function() {
+                document.body.className = t;
+                document.documentElement.style.visibility = '';
+            });
+        })();
+    </script>
+</head>
+<body>
+    <!-- V1: Горизонтальная навигация -->
+    <div class="nav-top">
+        <span class="brand">Лаб 4–5: Доступ / Валюты</span>
+        <a href="{% url 'index' %}">&#8592; АРМ Продажи</a>
+        <a href="{% url 'staff:employee_list' %}"
+           {% if request.resolver_match.url_name == 'employee_list' %}style="background:rgba(255,255,255,.2)"{% endif %}>
+            Сотрудники
+        </a>
+        <a href="{% url 'staff:currency_rates' %}"
+           {% if request.resolver_match.url_name == 'currency_rates' %}style="background:rgba(255,255,255,.2)"{% endif %}>
+            Курсы валют
+        </a>
+        {% if request.user.is_authenticated %}
+            <a href="{% url 'staff:logout' %}" style="margin-left:auto;">Выйти ({{ request.user.username }})</a>
+        {% else %}
+            <a href="{% url 'staff:login' %}" style="margin-left:auto;">Войти</a>
+        {% endif %}
+        <button class="theme-toggle">Дизайн 2</button>
+    </div>
+
+    <!-- V2: Боковая навигация -->
+    <aside class="sidebar">
+        <div class="brand">
+            Лаб 4–5
+            <small>Доступ / Валюты</small>
+        </div>
+        <nav>
+            <a href="{% url 'index' %}"><span class="icon">&#8592;</span> АРМ Продажи</a>
+            <a href="{% url 'staff:employee_list' %}"><span class="icon">&#128100;</span> Сотрудники</a>
+            <a href="{% url 'staff:currency_rates' %}"><span class="icon">&#128178;</span> Курсы валют (Лаб 5)</a>
+            {% if request.user.is_authenticated %}
+                <a href="{% url 'staff:logout' %}" style="margin-top:auto; border-top:1px solid rgba(255,255,255,.15); padding-top:12px;">
+                    <span class="icon">&#128682;</span> Выйти
+                </a>
+            {% else %}
+                <a href="{% url 'staff:login' %}" style="margin-top:auto;">
+                    <span class="icon">&#128274;</span> Войти
+                </a>
+            {% endif %}
+        </nav>
+        <button class="theme-toggle">Дизайн 1</button>
+    </aside>
+
+    <div class="main-content">
+        <div class="content-wrap">
+            {% if messages %}
+                {% for msg in messages %}
+                    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="{% static 'js/theme.js' %}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

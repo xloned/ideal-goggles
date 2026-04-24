@@ -208,7 +208,6 @@ def order_create(request):
 
         # Credit validation: order total cannot exceed remaining credit
         if sale_type == "credit":
-            # If client has current_account, it will be used first
             effective_total = order_total - min(client.current_account, order_total)
             if effective_total > client.credit_remaining:
                 warnings.append(
@@ -216,7 +215,6 @@ def order_create(request):
                     f"({client.credit_remaining} руб.). Потолок кредита: {client.credit_limit} руб., "
                     f"текущий долг: {client.current_debt} руб."
                 )
-            # 90% warning (pre-order check)
             if client.credit_limit > 0:
                 future_debt = client.current_debt + effective_total
                 if future_debt >= client.credit_limit * Decimal("0.9"):
@@ -235,8 +233,6 @@ def order_create(request):
                 )
 
         if warnings:
-            # For credit 90% warning — it's just a warning, allow if debt doesn't exceed limit
-            # For hard errors (exceeds limit, offset > debt) — block
             has_hard_error = False
             for w in warnings:
                 if "превышает остаток кредита" in w or "превышает текущий долг" in w or \
@@ -247,8 +243,6 @@ def order_create(request):
                     break
             if has_hard_error:
                 return JsonResponse({"status": "error", "warnings": warnings})
-            # Soft warnings (90%) — include but don't block
-            # Continue to create order, pass warnings in response
 
         order = Order.objects.create(
             client=client, sale_type=sale_type, total_sum=0
@@ -266,13 +260,7 @@ def order_create(request):
             )
             total += line_total
 
-            # Update stock based on sale type
-            if sale_type in ("cash", "cashless", "credit"):
-                product.stock -= qty
-                product.save()
-            elif sale_type == "barter":
-                # For barter, items being sold decrease stock
-                # Items being received increase stock (handled via barter_items)
+            if sale_type in ("cash", "cashless", "credit", "barter"):
                 product.stock -= qty
                 product.save()
             elif sale_type == "offset":
@@ -298,7 +286,6 @@ def order_create(request):
                 remaining = total
             client.current_debt += remaining
         elif sale_type == "barter":
-            # Increase stock for received barter items
             for bi in barter_items_data:
                 barter_product = get_object_or_404(Product, pk=bi["product_id"])
                 bqty = int(bi["quantity"])
@@ -318,7 +305,6 @@ def order_create(request):
             "current_account": str(client.current_account),
         }
 
-        # Credit 90% warning (post-order)
         if sale_type == "credit" and client.debt_warning:
             result["credit_warning"] = (
                 f"Внимание! Текущий долг клиента ({client.current_debt} руб.) составляет "
@@ -326,7 +312,6 @@ def order_create(request):
                 f"({client.credit_limit} руб.)!"
             )
 
-        # Include soft warnings (90% pre-order warning)
         if warnings:
             result["soft_warnings"] = warnings
 
@@ -359,143 +344,3 @@ def report(request):
             "total": orders.aggregate(total=Sum("total_sum"))["total"] or 0,
         })
     return render(request, "sales/report.html", {"report_data": report_data})
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# V2 — Альтернативный дизайн (боковая навигация, градиенты)
-# ═══════════════════════════════════════════════════════════════════════
-
-def index_v2(request):
-    return render(request, "sales/v2/index.html")
-
-
-def client_list_v2(request):
-    query = request.GET.get("q", "")
-    clients = Client.objects.all()
-    if query:
-        clients = clients.filter(name__icontains=query)
-    return render(request, "sales/v2/client_list.html", {"clients": clients, "query": query})
-
-
-def client_add_v2(request):
-    if request.method == "POST":
-        Client.objects.create(
-            name=request.POST["name"],
-            total_purchases=Decimal(request.POST.get("total_purchases", "0")),
-            current_account=Decimal(request.POST.get("current_account", "0")),
-            credit_limit=Decimal(request.POST.get("credit_limit", "0")),
-            current_debt=Decimal(request.POST.get("current_debt", "0")),
-            comment=request.POST.get("comment", ""),
-        )
-        return redirect("client_list_v2")
-    return render(request, "sales/v2/client_form.html")
-
-
-def client_edit_v2(request, pk):
-    client = get_object_or_404(Client, pk=pk)
-    if request.method == "POST":
-        client.name = request.POST["name"]
-        client.total_purchases = Decimal(request.POST.get("total_purchases", "0"))
-        client.current_account = Decimal(request.POST.get("current_account", "0"))
-        client.credit_limit = Decimal(request.POST.get("credit_limit", "0"))
-        client.current_debt = Decimal(request.POST.get("current_debt", "0"))
-        client.comment = request.POST.get("comment", "")
-        client.save()
-        return redirect("client_list_v2")
-    return render(request, "sales/v2/client_form.html", {"client": client})
-
-
-def product_list_v2(request):
-    products = Product.objects.all()
-    return render(request, "sales/v2/product_list.html", {"products": products})
-
-
-def product_add_v2(request):
-    if request.method == "POST":
-        name = request.POST.get("name", "").strip()
-        price_str = request.POST.get("price", "0")
-        stock_str = request.POST.get("stock", "0")
-        errors = []
-        if not name:
-            errors.append("Наименование товара не заполнено.")
-        try:
-            price = Decimal(price_str)
-            if price <= 0:
-                errors.append("Цена должна быть больше нуля.")
-        except Exception:
-            errors.append("Некорректная цена.")
-            price = Decimal("0")
-        try:
-            stock = int(stock_str)
-            if stock < 0:
-                errors.append("Количество не может быть отрицательным.")
-        except Exception:
-            errors.append("Некорректное количество.")
-            stock = 0
-        if errors:
-            form_data = {"name": name, "price": price_str, "stock": stock_str}
-            return render(request, "sales/v2/product_form.html", {"errors": errors, "form_data": form_data})
-        Product.objects.create(name=name, price=price, stock=stock)
-        return redirect("product_list_v2")
-    return render(request, "sales/v2/product_form.html")
-
-
-def product_edit_v2(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    if request.method == "POST":
-        name = request.POST.get("name", "").strip()
-        price_str = request.POST.get("price", "0")
-        stock_str = request.POST.get("stock", "0")
-        errors = []
-        if not name:
-            errors.append("Наименование товара не заполнено.")
-        try:
-            price = Decimal(price_str)
-            if price <= 0:
-                errors.append("Цена должна быть больше нуля.")
-        except Exception:
-            errors.append("Некорректная цена.")
-            price = Decimal("0")
-        try:
-            stock = int(stock_str)
-            if stock < 0:
-                errors.append("Количество не может быть отрицательным.")
-        except Exception:
-            errors.append("Некорректное количество.")
-            stock = 0
-        if errors:
-            return render(request, "sales/v2/product_form.html", {"product": product, "errors": errors})
-        product.name = name
-        product.price = price
-        product.stock = stock
-        product.save()
-        return redirect("product_list_v2")
-    return render(request, "sales/v2/product_form.html", {"product": product})
-
-
-def order_create_v2(request):
-    clients = Client.objects.all()
-    products = Product.objects.all()
-    return render(request, "sales/v2/order_create.html", {"clients": clients, "products": products})
-
-
-def order_list_v2(request):
-    orders = Order.objects.select_related("client").prefetch_related("items__product").all()
-    return render(request, "sales/v2/order_list.html", {"orders": orders})
-
-
-def report_v2(request):
-    clients = Client.objects.all()
-    report_data = []
-    for client in clients:
-        orders = Order.objects.filter(client=client)
-        orders_info = []
-        for order in orders:
-            items = order.items.select_related("product").all()
-            orders_info.append({"order": order, "items": items})
-        report_data.append({
-            "client": client,
-            "orders": orders_info,
-            "total": orders.aggregate(total=Sum("total_sum"))["total"] or 0,
-        })
-    return render(request, "sales/v2/report.html", {"report_data": report_data})

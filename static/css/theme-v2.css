@@ -1,0 +1,76 @@
+/* ═══ Theme V2: Modern — sidebar, Inter font, gradients ═══ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+body.theme-v2 {
+    --accent: #667eea;
+    --accent-hover: #5a6fd6;
+    --accent-shadow: rgba(102,126,234,.15);
+    --success: #10b981;
+    --success-hover: #0ea572;
+    --success-shadow: rgba(16,185,129,.2);
+    --danger: #ef4444;
+    --danger-hover: #dc2626;
+    --danger-shadow: rgba(239,68,68,.2);
+    --text: #1a1a2e;
+    --heading: #1a1a2e;
+    --label-color: #374151;
+    --input-border: #d1d5db;
+    --th-bg: #f8f9fb;
+    --th-color: #5f6b7a;
+    --border: #e8ecf1;
+    --border-light: #f0f2f5;
+    --row-hover: #f8f9fb;
+    --card-radius: 12px;
+    --card-padding: 24px;
+    --card-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --card-border: 1px solid #e8ecf1;
+
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f8f9fb;
+    color: #1a1a2e;
+    display: flex;
+    min-height: 100vh;
+}
+
+/* V2: show sidebar, hide top nav */
+body.theme-v2 .nav-top { display: none; }
+body.theme-v2 .sidebar { display: flex; }
+
+/* V2: main content with sidebar offset */
+body.theme-v2 .main-content { margin-left: 260px; }
+body.theme-v2 .content-wrap { padding: 0; }
+
+/* ─── Sidebar ─── */
+.sidebar {
+    width: 260px; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    color: #fff; padding: 30px 0; position: fixed; top: 0; left: 0; height: 100vh;
+    flex-direction: column; z-index: 100;
+}
+.sidebar .brand {
+    font-size: 18px; font-weight: 700; padding: 0 24px 20px; letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255,255,255,.15);
+}
+.sidebar .brand small { display: block; font-size: 11px; font-weight: 400; opacity: .7; margin-top: 4px; }
+.sidebar nav { margin-top: 20px; flex: 1; }
+.sidebar nav a {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 24px; color: rgba(255,255,255,.8); text-decoration: none;
+    font-size: 14px; font-weight: 500; transition: all .2s; border-left: 3px solid transparent;
+}
+.sidebar nav a:hover { background: rgba(255,255,255,.1); color: #fff; border-left-color: #fff; }
+.sidebar nav a .icon { font-size: 18px; width: 24px; text-align: center; }
+.sidebar .theme-toggle {
+    margin: 16px 24px 0; background: rgba(255,255,255,.12);
+    justify-content: center;
+}
+.sidebar .theme-toggle:hover { background: rgba(255,255,255,.22); }
+
+/* V2: alerts softer */
+body.theme-v2 .alert { border-radius: 10px; }
+
+/* V2: form inputs */
+body.theme-v2 .form-group input:focus,
+body.theme-v2 .form-group select:focus,
+body.theme-v2 .form-group textarea:focus {
+    box-shadow: 0 0 0 3px rgba(102,126,234,.15);
+}

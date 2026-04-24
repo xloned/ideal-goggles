@@ -1,0 +1,158 @@
+{% extends "exchange/base_exchange.html" %}
+{% block title %}Сервер — Лаб 3{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Программа 2 — Сервер</h1>
+        <p class="subtitle">Загрузка данных от Источника → обработка → передача Визуализатору</p>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger" style="margin-bottom:16px;">{{ error }}</div>
+{% endif %}
+
+<!-- Кнопки управления -->
+<div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap;">
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="load">
+        <button type="submit" class="btn" {% if not source_exists %}disabled title="Сначала создайте файл в Источнике"{% endif %}>
+            &#128229; Загрузить от Источника
+        </button>
+    </form>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="process">
+        <button type="submit" class="btn" style="background:#e67e22;" {% if not source_exists %}disabled{% endif %}>
+            &#9881; Обработать и передать Визуализатору
+        </button>
+    </form>
+
+    {% if processed_exists %}
+    <a href="{% url 'exchange:visualizer' %}" class="btn" style="background:#27ae60;">
+        &#128202; Перейти к Визуализатору &#8594;
+    </a>
+    {% endif %}
+</div>
+
+<!-- Данные источника -->
+{% if source_data %}
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <h3>Данные от Источника (exchange_source.json)</h3>
+    </div>
+    <div style="padding:10px 18px 4px;">
+        <p style="color:#666; font-size:13px;">
+            Структура данных: {{ source_data.schema.fields|length }} поле(й) ·
+            Записей: {{ source_data.records|length }}
+        </p>
+    </div>
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    {% for field in source_data.schema.fields %}
+                    <th>{{ field.name }}
+                        <span style="font-size:10px; color:#999;">[{{ field.type }}]</span>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in source_data.records %}
+                <tr>
+                    <td>{{ rec.product_name }}</td>
+                    <td><span class="badge badge-blue">{{ rec.product_group }}</span></td>
+                    <td>{{ rec.quantity }}</td>
+                    <td>{{ rec.selling_price }} ₽</td>
+                    <td>{{ rec.purchase_price }} ₽</td>
+                    <td>{{ rec.discount }}%</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" style="text-align:center; color:#999;">Нет записей</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Обработанные данные -->
+{% if processed %}
+<div class="card" style="margin-bottom:20px; border-top:3px solid #27ae60;">
+    <div class="card-header" style="background:#eafaf1;">
+        <h3>&#10003; Результат обработки — Прибыль по группам товаров</h3>
+    </div>
+    <div style="padding:10px 18px 4px;">
+        <p style="color:#666; font-size:13px;">
+            Обработано записей: {{ processed.source_records }} ·
+            Групп: {{ processed.groups|length }}
+        </p>
+        <p style="color:#555; font-size:13px; margin-top:4px;">
+            Формула: Прибыль = Цена продажи × Кол-во − Цена закупки × Кол-во
+        </p>
+    </div>
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Группа товаров</th>
+                    <th>Записей</th>
+                    <th>Выручка (₽)</th>
+                    <th>Себестоимость (₽)</th>
+                    <th>Прибыль (₽)</th>
+                    <th>Маржа (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in processed.groups %}
+                <tr>
+                    <td><strong>{{ g.group }}</strong></td>
+                    <td>{{ g.count }}</td>
+                    <td>{{ g.revenue }}</td>
+                    <td>{{ g.cost }}</td>
+                    <td style="font-weight:700; color:{% if g.profit >= 0 %}#27ae60{% else %}#e74c3c{% endif %};">
+                        {{ g.profit }}
+                    </td>
+                    <td>
+                        {% if g.revenue > 0 %}
+                            {% widthratio g.profit g.revenue 100 %}%
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div style="padding:12px 18px; font-size:13px; color:#555;">
+        Данные записаны в файл <code>exchange_processed.json</code> и переданы Визуализатору.
+    </div>
+</div>
+{% endif %}
+
+<!-- Схема обмена -->
+<div class="card" style="margin-bottom:20px; background:#fafafa;">
+    <div class="card-header"><h3>Схема обмена данными (Лаб. №3)</h3></div>
+    <div style="padding:16px 18px; font-family:monospace; font-size:13px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="background:#667eea; color:white; padding:8px 14px; border-radius:6px;">
+                &#128229; Программа 1<br><small>Источник</small><br>
+                <small style="opacity:.8;">exchange_source.json</small>
+            </span>
+            <span style="font-size:24px; color:#999;">&#8594;</span>
+            <span style="background:#e67e22; color:white; padding:8px 14px; border-radius:6px;">
+                &#9881; Программа 2<br><small>Сервер-обработчик</small><br>
+                <small style="opacity:.8;">exchange_processed.json</small>
+            </span>
+            <span style="font-size:24px; color:#999;">&#8594;</span>
+            <span style="background:#27ae60; color:white; padding:8px 14px; border-radius:6px;">
+                &#128202; Программа 3<br><small>Визуализатор</small><br>
+                <small style="opacity:.8;">matplotlib (аналог Excel OLE)</small>
+            </span>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -39,7 +39,18 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'sales',
     'monitoring',
+    'exchange',
+    'staff',
 ]
+
+# Authentication
+LOGIN_URL = '/staff/login/'
+LOGIN_REDIRECT_URL = '/staff/'
+LOGOUT_REDIRECT_URL = '/staff/login/'
+
+# Max failed login attempts before lockout
+MAX_LOGIN_ATTEMPTS = 3
+LOGIN_LOCKOUT_SECONDS = 300  # 5 minutes
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -117,3 +128,4 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']

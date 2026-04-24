@@ -1,0 +1,74 @@
+/* ═══ Theme V1: Classic — horizontal nav, Segoe UI ═══ */
+body.theme-v1 {
+    --accent: #3498db;
+    --accent-hover: #2980b9;
+    --accent-shadow: rgba(52,152,219,.2);
+    --success: #27ae60;
+    --success-hover: #219a52;
+    --success-shadow: rgba(39,174,96,.2);
+    --danger: #e74c3c;
+    --danger-hover: #c0392b;
+    --danger-shadow: rgba(231,76,60,.2);
+    --text: #333;
+    --heading: #2c3e50;
+    --label-color: #555;
+    --input-border: #ccc;
+    --th-bg: #34495e;
+    --th-color: #fff;
+    --border: #e0e0e0;
+    --border-light: #e0e0e0;
+    --row-hover: #f5f5f5;
+    --card-radius: 6px;
+    --card-padding: 20px;
+    --card-shadow: 0 1px 3px rgba(0,0,0,.1);
+    --card-border: none;
+
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f0f2f5;
+    color: #333;
+}
+
+/* V1: show top nav, hide sidebar */
+body.theme-v1 .nav-top { display: flex; }
+body.theme-v1 .sidebar { display: none; }
+body.theme-v1 .main-content { padding: 0; }
+
+/* V1: use container for content */
+body.theme-v1 .content-wrap {
+    max-width: 1200px; margin: 20px auto; padding: 0 20px;
+}
+
+/* ─── Top navigation ─── */
+.nav-top {
+    background: #2c3e50; padding: 0 20px; align-items: center; gap: 0;
+}
+.nav-top a {
+    color: #ecf0f1; text-decoration: none; padding: 15px 18px;
+    font-size: 14px; transition: background .2s;
+}
+.nav-top a:hover { background: #34495e; }
+.nav-top .brand {
+    font-weight: bold; font-size: 16px; margin-right: 20px;
+    color: #fff; padding: 15px 0;
+}
+.nav-top .theme-toggle { margin-left: auto; }
+
+/* V1: page-header simpler */
+body.theme-v1 .page-header h1 { font-size: 24px; margin-bottom: 20px; }
+body.theme-v1 .page-header p { display: none; }
+
+/* V1: table collapse */
+body.theme-v1 table { border-collapse: collapse; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+body.theme-v1 th { font-size: 14px; text-transform: none; letter-spacing: 0; }
+
+/* V1: buttons classic look */
+body.theme-v1 .btn { border-radius: 4px; }
+body.theme-v1 .btn-sm { border-radius: 4px; }
+body.theme-v1 .btn-outline { border-color: #ccc; color: #555; }
+
+/* V1: cards simpler */
+body.theme-v1 .card { border-radius: 6px; }
+
+/* V1: dash cards as simple cards */
+body.theme-v1 .dash-card { border-radius: 6px; }
+body.theme-v1 .dash-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }

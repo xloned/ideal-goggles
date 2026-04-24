@@ -1,0 +1,30 @@
+{% extends "staff/base_staff.html" %}
+{% block title %}Удаление сотрудника — Лаб 4{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Удаление сотрудника</h1>
+</div>
+
+<div class="card" style="max-width:480px; border-top:3px solid #e74c3c;">
+    <div style="padding:24px;">
+        <p style="font-size:16px; margin-bottom:8px;">
+            Вы действительно хотите удалить сотрудника:
+        </p>
+        <p style="font-size:20px; font-weight:700; color:#2c3e50; margin-bottom:4px;">
+            {{ employee.full_name }}
+        </p>
+        <p style="color:#888; margin-bottom:24px;">{{ employee.position }}</p>
+        <div class="alert alert-danger" style="margin-bottom:20px;">
+            Это действие необратимо!
+        </div>
+        <form method="post" style="display:flex; gap:10px;">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="background:#e74c3c;">
+                &#128465; Удалить
+            </button>
+            <a href="{% url 'staff:employee_list' %}" class="btn btn-outline">Отмена</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

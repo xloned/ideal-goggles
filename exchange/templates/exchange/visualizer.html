@@ -1,0 +1,97 @@
+{% extends "exchange/base_exchange.html" %}
+{% block title %}Визуализатор — Лаб 3{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Программа 3 — Визуализатор</h1>
+        <p class="subtitle">
+            Отображение обработанных данных в виде диаграммы.
+            Python/matplotlib — аналог диаграммы Microsoft Excel через OLE.
+        </p>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger" style="margin-bottom:16px;">
+    {{ error }}
+    <br><a href="{% url 'exchange:source' %}">&#8592; Перейти к Источнику</a>
+</div>
+{% endif %}
+
+{% if processed %}
+
+<!-- Диаграмма -->
+{% if chart_b64 %}
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-header"><h3>Прибыль по группам товаров — диаграмма</h3></div>
+    <div style="padding:16px; text-align:center;">
+        <img src="data:image/png;base64,{{ chart_b64 }}"
+             alt="Диаграмма прибыли по группам"
+             style="max-width:100%; height:auto; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,.1);">
+    </div>
+    <div style="padding:8px 18px 14px; text-align:center;">
+        <a href="{% url 'exchange:chart' %}" download="profit_chart.png" class="btn btn-outline">
+            &#128190; Скачать диаграмму (PNG)
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Таблица результатов -->
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-header">
+        <h3>Итоговые данные (exchange_processed.json)</h3>
+    </div>
+    <div style="padding:10px 18px 4px;">
+        <p style="color:#666; font-size:13px;">
+            Обработано записей: {{ processed.source_records }} ·
+            Групп: {{ processed.groups|length }}
+        </p>
+    </div>
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Группа товаров</th>
+                    <th>Кол-во записей</th>
+                    <th>Выручка (₽)</th>
+                    <th>Себестоимость (₽)</th>
+                    <th>Прибыль (₽)</th>
+                    <th>Маржа</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in processed.groups %}
+                <tr>
+                    <td style="color:#999;">{{ forloop.counter }}</td>
+                    <td><strong>{{ g.group }}</strong></td>
+                    <td>{{ g.count }}</td>
+                    <td>{{ g.revenue }} ₽</td>
+                    <td>{{ g.cost }} ₽</td>
+                    <td style="font-weight:700; color:{% if g.profit >= 0 %}#27ae60{% else %}#e74c3c{% endif %};">
+                        {% if g.profit >= 0 %}+{% endif %}{{ g.profit }} ₽
+                    </td>
+                    <td>
+                        {% if g.revenue > 0 %}
+                            <span class="badge {% if g.profit >= 0 %}badge-green{% else %}" style="background:#e74c3c;{% endif %}">
+                                {% widthratio g.profit g.revenue 100 %}%
+                            </span>
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endif %}
+
+<!-- Навигация назад -->
+<div style="display:flex; gap:12px;">
+    <a href="{% url 'exchange:source' %}" class="btn btn-outline">&#8592; К Источнику</a>
+    <a href="{% url 'exchange:server' %}" class="btn btn-outline">&#9881; К Серверу</a>
+</div>
+{% endblock %}

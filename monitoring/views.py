@@ -34,7 +34,6 @@ def dashboard(request):
     current = readings[0] if readings else None
     previous = readings[1:] if len(readings) > 1 else []
 
-    # Alerts
     warning = False
     alarm = False
     warning_msg = ""
@@ -64,41 +63,6 @@ def dashboard(request):
     })
 
 
-def dashboard_v2(request):
-    config = _get_config()
-    readings = list(config.readings.all()[:config.history_count + 1])
-    current = readings[0] if readings else None
-    previous = readings[1:] if len(readings) > 1 else []
-
-    warning = False
-    alarm = False
-    warning_msg = ""
-    alarm_msg = ""
-
-    if current and len(previous) > 0:
-        prev_val = previous[0].value
-        if prev_val != 0:
-            change_pct = abs((current.value - prev_val) / prev_val * 100)
-            if change_pct > config.warning_percent:
-                warning = True
-                warning_msg = f"Изменение {change_pct:.1f}% превышает порог {config.warning_percent}%"
-
-    if current:
-        if current.value < config.min_value or current.value > config.max_value:
-            alarm = True
-            alarm_msg = f"Значение {current.value:.2f} вне допустимого диапазона [{config.min_value}; {config.max_value}]"
-
-    return render(request, "monitoring/v2/dashboard.html", {
-        "config": config,
-        "current": current,
-        "previous": previous,
-        "warning": warning,
-        "warning_msg": warning_msg,
-        "alarm": alarm,
-        "alarm_msg": alarm_msg,
-    })
-
-
 # ─── Generate new reading ────────────────────────────────────────
 
 def generate_reading(request):
@@ -107,7 +71,6 @@ def generate_reading(request):
     if last:
         base = last.value
         delta = random.uniform(-5, 5)
-        # Occasionally generate out-of-range values
         if random.random() < 0.15:
             delta = random.choice([-1, 1]) * random.uniform(10, 20)
         new_val = round(base + delta, 2)
@@ -136,20 +99,6 @@ def config_edit(request):
     return render(request, "monitoring/config.html", {"config": config})
 
 
-def config_edit_v2(request):
-    config = _get_config()
-    if request.method == "POST":
-        config.name = request.POST.get("name", config.name)
-        config.unit = request.POST.get("unit", config.unit)
-        config.min_value = float(request.POST.get("min_value", config.min_value))
-        config.max_value = float(request.POST.get("max_value", config.max_value))
-        config.warning_percent = float(request.POST.get("warning_percent", config.warning_percent))
-        config.history_count = int(request.POST.get("history_count", config.history_count))
-        config.save()
-        return redirect("monitoring_dashboard_v2")
-    return render(request, "monitoring/v2/config.html", {"config": config})
-
-
 # ─── API: data for JS ────────────────────────────────────────────
 
 def api_data(request):
@@ -174,7 +123,6 @@ def api_data(request):
 # ─── Charts via matplotlib ───────────────────────────────────────
 
 def chart_current(request):
-    """Line chart of all current readings."""
     config = _get_config()
     readings = list(config.readings.all()[:config.history_count + 1])
     readings.reverse()
@@ -203,12 +151,11 @@ def chart_current(request):
 
 
 def chart_filtered(request):
-    """Line chart of filtered (selected) readings + red average line."""
     config = _get_config()
     readings = list(config.readings.all()[:50])
     readings.reverse()
 
-    mode = request.GET.get("mode", "gt")  # gt, lt, multiple
+    mode = request.GET.get("mode", "gt")
     boundary = float(request.GET.get("boundary", "25"))
 
     values = [r.value for r in readings]
@@ -246,7 +193,6 @@ def chart_filtered(request):
 
 
 def chart_bar(request):
-    """Bar chart of filtered readings."""
     config = _get_config()
     readings = list(config.readings.all()[:50])
     readings.reverse()
