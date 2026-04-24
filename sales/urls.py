@@ -8,6 +8,8 @@ urlpatterns = [
     path("clients/add/", views.client_add, name="client_add"),
     path("clients/<int:pk>/edit/", views.client_edit, name="client_edit"),
     path("api/clients/search/", views.client_search_api, name="client_search_api"),
+    # Лаб. №7: AJAX-проверка дублей ИНН
+    path("api/clients/check_inn/", views.check_duplicate_inn, name="check_duplicate_inn"),
     # Products
     path("products/", views.product_list, name="product_list"),
     path("products/add/", views.product_add, name="product_add"),
@@ -18,4 +20,8 @@ urlpatterns = [
     path("orders/", views.order_list, name="order_list"),
     # Report
     path("report/", views.report, name="report"),
+    # Лаб. №8: Печатные формы (PDF)
+    path("pdf/order/<int:pk>/", views.pdf_order, name="pdf_order"),
+    path("pdf/clients/", views.pdf_clients, name="pdf_clients"),
+    path("pdf/report/", views.pdf_report, name="pdf_report"),
 ]

@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'monitoring',
     'exchange',
     'staff',
+    'transport',
+    'docs_lab',
 ]
 
 # Authentication

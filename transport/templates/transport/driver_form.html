@@ -1,0 +1,23 @@
+{% extends "transport/base_transport.html" %}
+{% block title %}{{ title }} — Лаб 9{% endblock %}
+{% block content %}
+<div class="page-header"><h1>{{ title }}</h1></div>
+<div class="card" style="max-width:480px;">
+    <div style="padding:24px;">
+        <form method="post">
+            {% csrf_token %}
+            <div style="margin-bottom:16px;">
+                <label>{{ form.employee.label }}</label>{{ form.employee }}
+                {% if form.employee.errors %}<div style="color:#e74c3c;font-size:12px;">{{ form.employee.errors }}</div>{% endif %}
+            </div>
+            <div style="margin-bottom:16px;">
+                <label>{{ form.automobile.label }}</label>{{ form.automobile }}
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button type="submit" class="btn">Сохранить</button>
+                <a href="{% url 'transport:driver_list' %}" class="btn btn-outline">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

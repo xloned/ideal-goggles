@@ -1,0 +1,86 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ description }} — Лаб 6</title>
+    <link rel="stylesheet" href="{% static 'css/common.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v1.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v2.css' %}">
+    <script>(function(){var t=localStorage.getItem('arm-theme')||'theme-v1';document.documentElement.style.visibility='hidden';document.addEventListener('DOMContentLoaded',function(){document.body.className=t;document.documentElement.style.visibility='';});})()</script>
+    <style>
+        .code-view { background:#1e1e1e; border-radius:8px; overflow:auto; font-family:'Courier New',monospace; font-size:12px; line-height:1.6; }
+        .code-line { display:flex; min-height:20px; }
+        .code-line:hover { background:rgba(255,255,255,.05); }
+        .line-num { color:#555; min-width:50px; padding:0 12px; text-align:right; user-select:none; border-right:1px solid #333; flex-shrink:0; }
+        .line-text { padding:0 16px; white-space:pre; color:#d4d4d4; }
+        .line-comment .line-text { color:#6a9955; }
+        .line-docstring .line-text { color:#ce9178; }
+        .line-def .line-text { color:#dcdcaa; }
+        .line-decorator .line-text { color:#c586c0; }
+        .code-toolbar { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#2d2d2d; border-radius:8px 8px 0 0; }
+        .code-filename { color:#9cdcfe; font-family:monospace; font-size:13px; }
+        .code-stats { color:#888; font-size:12px; }
+        .legend { display:flex; gap:16px; font-size:11px; flex-wrap:wrap; }
+        .legend-item { display:flex; align-items:center; gap:4px; }
+        .legend-dot { width:10px; height:10px; border-radius:50%; }
+    </style>
+</head>
+<body>
+<div class="nav-top">
+    <span class="brand">Лаб 6: Документация</span>
+    <a href="{% url 'index' %}">&#8592; АРМ</a>
+    <a href="{% url 'docs_lab:index' %}">Все модули</a>
+    {% for key, val in modules.items %}
+    <a href="{% url 'docs_lab:source' key %}" {% if key == module_key %}style="background:rgba(255,255,255,.2)"{% endif %}
+       style="font-size:11px;">{{ val.1|truncatechars:20 }}</a>
+    {% endfor %}
+    <button class="theme-toggle">Дизайн 2</button>
+</div>
+<aside class="sidebar">
+    <div class="brand">Лаб 6<small>Документирование</small></div>
+    <nav>
+        <a href="{% url 'docs_lab:index' %}"><span class="icon">&#8592;</span> Все модули</a>
+        {% for key, val in modules.items %}
+        <a href="{% url 'docs_lab:source' key %}"><span class="icon">&#128196;</span> {{ val.1|truncatechars:25 }}</a>
+        {% endfor %}
+    </nav>
+    <button class="theme-toggle">Дизайн 1</button>
+</aside>
+<div class="main-content"><div class="content-wrap">
+
+<div class="page-header">
+    <div>
+        <h1>{{ description }}</h1>
+        <p class="subtitle">{{ total_lines }} строк · {{ file_path }}</p>
+    </div>
+    <a href="{% url 'docs_lab:index' %}" class="btn btn-outline">&#8592; Назад</a>
+</div>
+
+<!-- Легенда цветов -->
+<div class="legend" style="margin-bottom:16px;padding:10px 14px;background:#2d2d2d;border-radius:8px;">
+    <div class="legend-item"><div class="legend-dot" style="background:#6a9955;"></div><span style="color:#aaa">Комментарий</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ce9178;"></div><span style="color:#aaa">Docstring</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#dcdcaa;"></div><span style="color:#aaa">Функция/Класс</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c586c0;"></div><span style="color:#aaa">Декоратор</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#d4d4d4;"></div><span style="color:#aaa">Код</span></div>
+</div>
+
+<div class="code-view">
+    <div class="code-toolbar">
+        <span class="code-filename">{{ file_path|truncatechars:60 }}</span>
+        <span class="code-stats">{{ total_lines }} строк</span>
+    </div>
+    {% for line in lines %}
+    <div class="code-line {% if line.is_comment %}line-comment{% elif line.is_docstring %}line-docstring{% elif line.is_def %}line-def{% elif line.is_decorator %}line-decorator{% endif %}">
+        <span class="line-num">{{ line.num }}</span>
+        <span class="line-text">{{ line.text }}</span>
+    </div>
+    {% endfor %}
+</div>
+
+</div></div>
+<script src="{% static 'js/theme.js' %}"></script>
+</body>
+</html>

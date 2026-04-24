@@ -13,7 +13,10 @@
             <button type="submit" class="btn btn-primary">Найти</button>
             {% if query %}<a href="{% url 'client_list' %}" class="btn btn-outline">Сбросить</a>{% endif %}
         </form>
-        <a href="{% url 'client_add' %}" class="btn btn-success">+ Добавить клиента</a>
+        <div style="display:flex;gap:8px;">
+            <a href="{% url 'client_add' %}" class="btn btn-success">+ Добавить клиента</a>
+            <a href="{% url 'pdf_clients' %}" class="btn btn-outline" target="_blank">&#128196; PDF (Лаб 8)</a>
+        </div>
     </div>
 
     {% if clients %}
@@ -22,6 +25,7 @@
         <thead>
             <tr>
                 <th>Клиент</th>
+                <th>ИНН</th>
                 <th>Общий счёт покупок</th>
                 <th>Текущий счёт</th>
                 <th>Потолок кредита</th>
@@ -35,6 +39,9 @@
             {% for c in clients %}
             <tr>
                 <td><strong>{{ c.name }}</strong></td>
+                <td style="font-family:monospace;font-size:12px;">
+                    {% if c.inn %}{{ c.inn }}{% else %}<span style="color:#bbb;">—</span>{% endif %}
+                </td>
                 <td>{{ c.total_purchases }} руб.</td>
                 <td>{{ c.current_account }} руб.</td>
                 <td>{{ c.credit_limit }} руб.</td>

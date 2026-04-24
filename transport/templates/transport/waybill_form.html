@@ -1,0 +1,96 @@
+{% extends "transport/base_transport.html" %}
+{% block title %}{{ title }} — Лаб 9{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>{{ title }}</h1></div></div>
+
+{% if waybill %}
+<div class="card" style="margin-bottom:16px;border-left:4px solid var(--accent);padding:12px 18px;font-size:13px;">
+    Текущий пробег: <strong>{{ waybill.mileage|floatformat:1 }} км</strong> ·
+    Расход: <strong>{{ waybill.fuel_consumption|floatformat:2 }} л</strong>
+    (пересчитывается автоматически при сохранении)
+</div>
+{% endif %}
+
+<div class="card" style="max-width:600px;">
+    <div style="padding:24px;">
+        <form method="post">
+            {% csrf_token %}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div style="grid-column:1/-1;">
+                    <label>{{ form.driver.label }}</label>
+                    {{ form.driver }}
+                    {% if form.driver.errors %}<div style="color:#e74c3c;font-size:12px;">{{ form.driver.errors }}</div>{% endif %}
+                    <small style="color:#888;display:block;margin-top:4px;" id="auto-info"></small>
+                </div>
+                <div>
+                    <label>{{ form.departure_time.label }}</label>
+                    {{ form.departure_time }}
+                    {% if form.departure_time.errors %}<div style="color:#e74c3c;font-size:12px;">{{ form.departure_time.errors }}</div>{% endif %}
+                </div>
+                <div>
+                    <label>{{ form.arrival_time.label }}</label>
+                    {{ form.arrival_time }}
+                    {% if form.arrival_time.errors %}<div style="color:#e74c3c;font-size:12px;">{{ form.arrival_time.errors }}</div>{% endif %}
+                </div>
+                <div>
+                    <label>{{ form.start_mileage.label }}</label>
+                    {{ form.start_mileage }}
+                    {% if form.start_mileage.errors %}<div style="color:#e74c3c;font-size:12px;">{{ form.start_mileage.errors }}</div>{% endif %}
+                </div>
+                <div>
+                    <label>{{ form.end_mileage.label }}</label>
+                    {{ form.end_mileage }}
+                    {% if form.end_mileage.errors %}<div style="color:#e74c3c;font-size:12px;">{{ form.end_mileage.errors }}</div>{% endif %}
+                </div>
+            </div>
+            <!-- Предварительный расчёт пробега -->
+            <div id="preview" style="display:none;margin-top:12px;padding:10px 14px;background:#eafaf1;border-radius:8px;font-size:13px;">
+                Пробег: <strong id="prev-mileage">—</strong> км ·
+                Расход: <strong id="prev-fuel">—</strong> л
+            </div>
+            {% if form.non_field_errors %}<div class="alert alert-warning" style="margin-top:10px;">{{ form.non_field_errors }}</div>{% endif %}
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button type="submit" class="btn">Сохранить</button>
+                <a href="{% url 'transport:waybill_list' %}" class="btn btn-outline">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Предварительный расчёт пробега и расхода на клиентской стороне
+var fuelNorm = null;
+
+document.getElementById('id_driver').addEventListener('change', function(){
+    var driverId = this.value;
+    if (!driverId) { document.getElementById('auto-info').textContent = ''; return; }
+    fetch('/transport/api/driver/' + driverId + '/auto/')
+        .then(r => r.json())
+        .then(data => {
+            fuelNorm = data.fuel_norm;
+            document.getElementById('auto-info').textContent = 'Автомобиль: ' + data.name +
+                (data.fuel_norm ? ' · норма: ' + data.fuel_norm + ' л/км' : '');
+            calcPreview();
+        });
+});
+
+function calcPreview() {
+    var s = parseFloat(document.getElementById('id_start_mileage').value) || 0;
+    var e = parseFloat(document.getElementById('id_end_mileage').value) || 0;
+    if (e > s) {
+        var mileage = (e - s).toFixed(1);
+        var fuel = fuelNorm ? (mileage * fuelNorm).toFixed(2) : '—';
+        document.getElementById('prev-mileage').textContent = mileage;
+        document.getElementById('prev-fuel').textContent = fuel;
+        document.getElementById('preview').style.display = 'block';
+    } else {
+        document.getElementById('preview').style.display = 'none';
+    }
+}
+
+document.getElementById('id_start_mileage').addEventListener('input', calcPreview);
+document.getElementById('id_end_mileage').addEventListener('input', calcPreview);
+</script>
+{% endblock %}

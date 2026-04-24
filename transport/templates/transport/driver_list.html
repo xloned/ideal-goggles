@@ -1,0 +1,39 @@
+{% extends "transport/base_transport.html" %}
+{% block title %}Водители — Лаб 9{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div><h1>Справочник «Водители»</h1><p class="subtitle">Лаб. №9 — связь сотрудник ↔ автомобиль</p></div>
+    <a href="{% url 'transport:driver_add' %}" class="btn">+ Добавить</a>
+</div>
+<div class="card">
+    <div style="overflow-x:auto;">
+        <table>
+            <thead><tr><th>#</th><th>Сотрудник</th><th>Должность</th><th>Закреплённый автомобиль</th><th></th></tr></thead>
+            <tbody>
+            {% for driver in drivers %}
+            <tr>
+                <td style="color:#999">{{ forloop.counter }}</td>
+                <td><strong>{{ driver.employee.full_name }}</strong></td>
+                <td>{{ driver.employee.position }}</td>
+                <td>
+                    {% if driver.automobile %}
+                        <span class="badge badge-green">{{ driver.automobile }}</span>
+                    {% else %}
+                        <span style="color:#999;">Не назначен</span>
+                    {% endif %}
+                </td>
+                <td style="white-space:nowrap;">
+                    <a href="{% url 'transport:driver_edit' driver.pk %}" class="btn btn-outline" style="padding:3px 10px;font-size:12px;">&#9998;</a>
+                    <a href="{% url 'transport:driver_delete' driver.pk %}" class="btn btn-outline" style="padding:3px 10px;font-size:12px;color:#e74c3c;border-color:#e74c3c;">&#128465;</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" style="text-align:center;color:#999;padding:32px;">
+                Нет водителей. <a href="{% url 'transport:driver_add' %}">Добавить</a>
+            </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

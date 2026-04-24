@@ -7,4 +7,6 @@ urlpatterns = [
     path('monitoring/', include('monitoring.urls')),
     path('exchange/', include('exchange.urls')),
     path('staff/', include('staff.urls')),
+    path('transport/', include('transport.urls')),
+    path('docs/', include('docs_lab.urls')),
 ]

@@ -1,0 +1,39 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Лаб 9 — Учёт транспорта{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/common.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v1.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v2.css' %}">
+    <script>(function(){var t=localStorage.getItem('arm-theme')||'theme-v1';document.documentElement.style.visibility='hidden';document.addEventListener('DOMContentLoaded',function(){document.body.className=t;document.documentElement.style.visibility='';});})()</script>
+</head>
+<body>
+    <div class="nav-top">
+        <span class="brand">Лаб 9: Транспорт</span>
+        <a href="{% url 'index' %}">&#8592; АРМ</a>
+        <a href="{% url 'transport:automobile_list' %}" {% if 'automobile' in request.resolver_match.url_name %}style="background:rgba(255,255,255,.2)"{% endif %}>Автомобили</a>
+        <a href="{% url 'transport:driver_list' %}" {% if 'driver' in request.resolver_match.url_name %}style="background:rgba(255,255,255,.2)"{% endif %}>Водители</a>
+        <a href="{% url 'transport:waybill_list' %}" {% if 'waybill' in request.resolver_match.url_name %}style="background:rgba(255,255,255,.2)"{% endif %}>Путевые листы</a>
+        <button class="theme-toggle">Дизайн 2</button>
+    </div>
+    <aside class="sidebar">
+        <div class="brand">Лаб 9<small>Учёт транспорта</small></div>
+        <nav>
+            <a href="{% url 'index' %}"><span class="icon">&#8592;</span> АРМ Продажи</a>
+            <a href="{% url 'transport:automobile_list' %}"><span class="icon">&#128665;</span> Автомобили</a>
+            <a href="{% url 'transport:driver_list' %}"><span class="icon">&#128100;</span> Водители</a>
+            <a href="{% url 'transport:waybill_list' %}"><span class="icon">&#128196;</span> Путевые листы</a>
+        </nav>
+        <button class="theme-toggle">Дизайн 1</button>
+    </aside>
+    <div class="main-content"><div class="content-wrap">
+        {% if messages %}{% for msg in messages %}<div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>{% endfor %}{% endif %}
+        {% block content %}{% endblock %}
+    </div></div>
+    <script src="{% static 'js/theme.js' %}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

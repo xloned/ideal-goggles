@@ -1,0 +1,16 @@
+{% extends "transport/base_transport.html" %}
+{% block title %}Удаление — Лаб 9{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Удаление: {{ type }}</h1></div>
+<div class="card" style="max-width:440px;border-top:3px solid #e74c3c;">
+    <div style="padding:24px;">
+        <p style="font-size:16px;margin-bottom:16px;">Удалить <strong>{{ type }}</strong>: <em>{{ obj }}</em>?</p>
+        <div class="alert alert-danger" style="margin-bottom:16px;">Это действие необратимо!</div>
+        <form method="post" style="display:flex;gap:10px;">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="background:#e74c3c;">&#128465; Удалить</button>
+            <a href="javascript:history.back()" class="btn btn-outline">Отмена</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

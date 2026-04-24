@@ -6,13 +6,30 @@
     <p>{% if client %}{{ client.name }}{% else %}Заполните данные нового клиента{% endif %}</p>
 </div>
 
+{% if messages %}
+{% for msg in messages %}
+<div class="alert alert-warning" style="margin-bottom:12px;">{{ msg }}</div>
+{% endfor %}
+{% endif %}
+
 <div class="card" style="max-width:640px;">
-    <form method="post">
+    <form method="post" id="client-form">
         {% csrf_token %}
         <div class="form-group">
             <label>Имя клиента</label>
             <input type="text" name="name" value="{{ client.name|default:'' }}" required>
         </div>
+
+        <!-- ── Лаб. №7: поле ИНН ──────────────────────────────────── -->
+        <div class="form-group">
+            <label>ИНН <span style="color:#888;font-size:12px;">(10 цифр — организация, 12 — физ.лицо)</span></label>
+            <input type="text" name="inn" id="inn-field" maxlength="12" pattern="\d*"
+                   value="{{ client.inn|default:'' }}"
+                   placeholder="Необязательно"
+                   style="font-family:monospace; letter-spacing:2px;">
+            <div id="inn-status" style="font-size:12px;margin-top:4px;"></div>
+        </div>
+
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
             <div class="form-group">
                 <label>Общий счёт покупок (руб.)</label>
@@ -41,4 +58,58 @@
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Лаб. №7: AJAX-проверка дублей ИНН и валидация формата ────────────────────
+var innField = document.getElementById('inn-field');
+var innStatus = document.getElementById('inn-status');
+var excludeId = '{{ client.pk|default:"" }}';
+
+// Алгоритм проверки контрольных цифр ИНН (клиентская сторона)
+function validateInnFormat(inn) {
+    if (!inn) return null;                              // пустое — OK
+    if (!/^\d+$/.test(inn)) return 'Только цифры';    // нецифровые символы
+    if (inn.length !== 10 && inn.length !== 12)
+        return '10 (организация) или 12 (физ.лицо) цифр';
+
+    var d = inn.split('').map(Number);
+    function chk(w, pos) {
+        return (w.reduce(function(s,v,i){return s+v*d[i];},0) % 11 % 10) === d[pos];
+    }
+    if (inn.length === 10 && !chk([2,4,10,3,5,9,4,6,8], 9))
+        return 'Ошибка контрольной цифры';
+    if (inn.length === 12 && (!chk([7,2,4,10,3,5,9,4,6,8],10) || !chk([3,7,2,4,10,3,5,9,4,6,8],11)))
+        return 'Ошибка контрольных цифр';
+    return '';   // '' = валидный
+}
+
+var debounceTimer;
+innField.addEventListener('input', function(){
+    clearTimeout(debounceTimer);
+    var val = this.value.trim();
+    var err = validateInnFormat(val);
+    if (err === null) { innStatus.textContent = ''; return; }
+    if (err) {
+        innStatus.textContent = '✗ ' + err;
+        innStatus.style.color = '#e74c3c';
+        return;
+    }
+    innStatus.textContent = '✓ Формат верен, проверяю дубли…';
+    innStatus.style.color = '#888';
+    debounceTimer = setTimeout(function(){
+        var url = '/api/clients/check_inn/?inn=' + val + (excludeId ? '&exclude_id=' + excludeId : '');
+        fetch(url).then(r => r.json()).then(data => {
+            if (data.duplicate) {
+                innStatus.textContent = '⚠ Дубль! ИНН уже есть у клиента: ' + data.client_name;
+                innStatus.style.color = '#e67e22';
+            } else {
+                innStatus.textContent = '✓ ИНН уникален';
+                innStatus.style.color = '#27ae60';
+            }
+        });
+    }, 500);
+});
+</script>
 {% endblock %}

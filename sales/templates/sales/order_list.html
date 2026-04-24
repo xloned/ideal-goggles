@@ -6,8 +6,11 @@
     <p>История всех оформленных заказов</p>
 </div>
 
-<div style="margin-bottom:20px;">
+<div style="margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap;">
     <a href="{% url 'order_create' %}" class="btn btn-success">+ Новый заказ</a>
+    <a href="{% url 'pdf_report' %}" class="btn btn-outline" target="_blank">
+        &#128196; PDF: Сводный отчёт (Лаб 8)
+    </a>
 </div>
 
 {% if orders %}
@@ -15,7 +18,11 @@
 <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h3 style="margin:0;">Заказ #{{ order.pk }} — {{ order.client.name }}</h3>
-        <span class="badge badge-blue">{{ order.get_sale_type_display }}</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <span class="badge badge-blue">{{ order.get_sale_type_display }}</span>
+            <a href="{% url 'pdf_order' order.pk %}" class="btn btn-outline" target="_blank"
+               style="padding:3px 10px;font-size:11px;">&#128196; PDF</a>
+        </div>
     </div>
     <p class="text-muted" style="margin-bottom:12px;">{{ order.created_at }}</p>
     <div style="overflow-x:auto;">

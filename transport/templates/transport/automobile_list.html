@@ -1,0 +1,39 @@
+{% extends "transport/base_transport.html" %}
+{% block title %}Автомобили — Лаб 9{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div><h1>Справочник «Автомобили»</h1><p class="subtitle">Лабораторная работа №9</p></div>
+    <a href="{% url 'transport:automobile_add' %}" class="btn">+ Добавить</a>
+</div>
+<div class="card">
+    <div style="overflow-x:auto;">
+        <table>
+            <thead><tr>
+                <th>#</th><th>Марка</th><th>Гос. номер</th><th>Год</th>
+                <th>Норма расхода (л/км)</th><th>Поездок</th><th>Пробег (км)</th><th></th>
+            </tr></thead>
+            <tbody>
+            {% for auto in automobiles %}
+            <tr>
+                <td style="color:#999">{{ forloop.counter }}</td>
+                <td><strong>{{ auto.make }}</strong></td>
+                <td><span class="badge badge-blue">{{ auto.state_number }}</span></td>
+                <td>{{ auto.year }}</td>
+                <td>{{ auto.fuel_norm }} л/км</td>
+                <td>{{ auto.trips_count|default:0 }}</td>
+                <td>{{ auto.total_mileage|default:0|floatformat:1 }} км</td>
+                <td style="white-space:nowrap;">
+                    <a href="{% url 'transport:automobile_edit' auto.pk %}" class="btn btn-outline" style="padding:3px 10px;font-size:12px;">&#9998;</a>
+                    <a href="{% url 'transport:automobile_delete' auto.pk %}" class="btn btn-outline" style="padding:3px 10px;font-size:12px;color:#e74c3c;border-color:#e74c3c;">&#128465;</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" style="text-align:center;color:#999;padding:32px;">
+                Нет автомобилей. <a href="{% url 'transport:automobile_add' %}">Добавить</a>
+            </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

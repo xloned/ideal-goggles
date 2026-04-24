@@ -1,0 +1,62 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лаб 6 — Документирование кода</title>
+    <link rel="stylesheet" href="{% static 'css/common.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v1.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v2.css' %}">
+    <script>(function(){var t=localStorage.getItem('arm-theme')||'theme-v1';document.documentElement.style.visibility='hidden';document.addEventListener('DOMContentLoaded',function(){document.body.className=t;document.documentElement.style.visibility='';});})()</script>
+</head>
+<body>
+<div class="nav-top">
+    <span class="brand">Лаб 6: Документация</span>
+    <a href="{% url 'index' %}">&#8592; АРМ Продажи</a>
+    <button class="theme-toggle">Дизайн 2</button>
+</div>
+<aside class="sidebar">
+    <div class="brand">Лаб 6<small>Документирование</small></div>
+    <nav>
+        <a href="{% url 'index' %}"><span class="icon">&#8592;</span> АРМ Продажи</a>
+        {% for m in modules %}<a href="{% url 'docs_lab:source' m.key %}"><span class="icon">&#128196;</span> {{ m.description }}</a>{% endfor %}
+    </nav>
+    <button class="theme-toggle">Дизайн 1</button>
+</aside>
+<div class="main-content"><div class="content-wrap">
+<div class="page-header">
+    <div>
+        <h1>Документирование кода</h1>
+        <p class="subtitle">Лабораторная работа №6 — Совместная разработка ИС</p>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;border-left:4px solid var(--accent);padding:14px 18px;">
+    <strong>Правила комментирования (по заданию):</strong>
+    <ul style="margin:8px 0 0 16px;font-size:13px;line-height:1.8;">
+        <li>Каждая строка снабжена подробным комментарием</li>
+        <li>Комментарии графически выделены символами (───, ═══)</li>
+        <li>Каждый модуль имеет комментарий с описанием назначения</li>
+        <li>Каждая функция — расширенный docstring (назначение, параметры, возврат)</li>
+        <li>При изменении — код специалиста, дата, причина (Лаб. №7, №8)</li>
+        <li>Сложные алгоритмы описаны построчно (валидация ИНН, PDF-генерация)</li>
+    </ul>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
+{% for m in modules %}
+<a href="{% url 'docs_lab:source' m.key %}" style="text-decoration:none;">
+    <div class="dash-card" style="padding:20px;cursor:pointer;transition:box-shadow .2s;">
+        <div style="font-size:24px;margin-bottom:8px;">&#128196;</div>
+        <div style="font-weight:700;margin-bottom:4px;">{{ m.description }}</div>
+        <div style="color:#888;font-size:12px;">{{ m.file|truncatechars:50 }}</div>
+        <div style="color:var(--accent);font-size:13px;margin-top:8px;">{{ m.lines }} строк</div>
+    </div>
+</a>
+{% endfor %}
+</div>
+</div></div>
+<script src="{% static 'js/theme.js' %}"></script>
+</body>
+</html>
