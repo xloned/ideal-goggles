@@ -1,0 +1,137 @@
+{% extends "transport/base_transport.html" %}
+{% block title %}Статистика транспорта — Лаб 9{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom:4px;">Статистика и диаграммы</h2>
+<p style="color:#666;margin-top:0;margin-bottom:24px;">Аналитика пробега, расхода топлива и поездок</p>
+
+<!-- ── Сводные карточки ─────────────────────────────────────── -->
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:32px;">
+    <div style="flex:1;min-width:160px;background:linear-gradient(135deg,#1F4E79,#2E75B6);
+                color:#fff;border-radius:12px;padding:20px 24px;box-shadow:0 2px 8px rgba(0,0,0,.15);">
+        <div style="font-size:28px;font-weight:700;">{{ totals.total_trips|default:"0" }}</div>
+        <div style="opacity:.85;font-size:13px;margin-top:4px;">Всего поездок</div>
+    </div>
+    <div style="flex:1;min-width:160px;background:linear-gradient(135deg,#27ae60,#2ecc71);
+                color:#fff;border-radius:12px;padding:20px 24px;box-shadow:0 2px 8px rgba(0,0,0,.15);">
+        <div style="font-size:28px;font-weight:700;">{{ totals.total_mileage|default:"0"|floatformat:0 }} км</div>
+        <div style="opacity:.85;font-size:13px;margin-top:4px;">Суммарный пробег</div>
+    </div>
+    <div style="flex:1;min-width:160px;background:linear-gradient(135deg,#e67e22,#f39c12);
+                color:#fff;border-radius:12px;padding:20px 24px;box-shadow:0 2px 8px rgba(0,0,0,.15);">
+        <div style="font-size:28px;font-weight:700;">{{ totals.total_fuel|default:"0"|floatformat:1 }} л</div>
+        <div style="opacity:.85;font-size:13px;margin-top:4px;">Расход топлива</div>
+    </div>
+</div>
+
+<!-- ── Диаграмма 1: пробег по автомобилям ──────────────────── -->
+<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:24px;margin-bottom:24px;
+            box-shadow:0 1px 4px rgba(0,0,0,.07);">
+    <h3 style="margin:0 0 16px;color:#1F4E79;">
+        📊 Гистограмма пробега по автомобилям
+    </h3>
+    {% if autos_stats %}
+        <img src="{% url 'transport:chart_mileage_by_auto' %}?t={{ request.META.SERVER_PORT }}"
+             alt="Гистограмма пробега"
+             style="max-width:100%;border-radius:8px;display:block;margin:0 auto;">
+    {% else %}
+        <p style="color:#999;text-align:center;padding:40px 0;">
+            Нет данных о пробеге. Добавьте путевые листы с конечным километражом.
+        </p>
+    {% endif %}
+</div>
+
+<!-- ── Диаграмма 2: расход топлива по водителям ─────────────── -->
+<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:24px;margin-bottom:24px;
+            box-shadow:0 1px 4px rgba(0,0,0,.07);">
+    <h3 style="margin:0 0 16px;color:#7B3F00;">
+        ⛽ Гистограмма расхода топлива по водителям
+    </h3>
+    {% if drivers_stats %}
+        <img src="{% url 'transport:chart_fuel_by_driver' %}?t={{ request.META.SERVER_PORT }}"
+             alt="Расход топлива по водителям"
+             style="max-width:100%;border-radius:8px;display:block;margin:0 auto;">
+    {% else %}
+        <p style="color:#999;text-align:center;padding:40px 0;">
+            Нет данных. Добавьте водителей и путевые листы.
+        </p>
+    {% endif %}
+</div>
+
+<!-- ── Диаграмма 3: круговая — доля поездок ─────────────────── -->
+<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:24px;margin-bottom:32px;
+            box-shadow:0 1px 4px rgba(0,0,0,.07);">
+    <h3 style="margin:0 0 16px;color:#555;">
+        🥧 Распределение поездок по автомобилям
+    </h3>
+    {% if autos_stats %}
+        <img src="{% url 'transport:chart_trips_pie' %}?t={{ request.META.SERVER_PORT }}"
+             alt="Доля поездок"
+             style="max-width:560px;width:100%;border-radius:8px;display:block;margin:0 auto;">
+    {% else %}
+        <p style="color:#999;text-align:center;padding:40px 0;">
+            Нет данных о поездках.
+        </p>
+    {% endif %}
+</div>
+
+<!-- ── Сводная таблица по автомобилям ──────────────────────── -->
+<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:24px;margin-bottom:24px;
+            box-shadow:0 1px 4px rgba(0,0,0,.07);">
+    <h3 style="margin:0 0 16px;color:#1F4E79;">Сводная таблица — Автомобили</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead>
+            <tr style="background:#1F4E79;color:#fff;">
+                <th style="padding:10px 14px;text-align:left;">Автомобиль</th>
+                <th style="padding:10px 14px;text-align:left;">Гос. номер</th>
+                <th style="padding:10px 14px;text-align:right;">Поездок</th>
+                <th style="padding:10px 14px;text-align:right;">Пробег (км)</th>
+                <th style="padding:10px 14px;text-align:right;">Расход топлива (л)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in autos_stats %}
+            <tr style="{% cycle 'background:#F0F6FF' 'background:#fff' %}">
+                <td style="padding:9px 14px;border-bottom:1px solid #eee;">{{ a.make }}</td>
+                <td style="padding:9px 14px;border-bottom:1px solid #eee;font-family:monospace;">{{ a.state_number }}</td>
+                <td style="padding:9px 14px;border-bottom:1px solid #eee;text-align:right;">{{ a.trips|default:"—" }}</td>
+                <td style="padding:9px 14px;border-bottom:1px solid #eee;text-align:right;">{{ a.total_mileage|default:"—"|floatformat:1 }}</td>
+                <td style="padding:9px 14px;border-bottom:1px solid #eee;text-align:right;">{{ a.total_fuel|default:"—"|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" style="padding:20px;text-align:center;color:#999;">Нет автомобилей</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ── Сводная таблица по водителям ────────────────────────── -->
+<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:24px;
+            box-shadow:0 1px 4px rgba(0,0,0,.07);">
+    <h3 style="margin:0 0 16px;color:#7B3F00;">Сводная таблица — Водители</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead>
+            <tr style="background:#7B3F00;color:#fff;">
+                <th style="padding:10px 14px;text-align:left;">Водитель</th>
+                <th style="padding:10px 14px;text-align:left;">Автомобиль</th>
+                <th style="padding:10px 14px;text-align:right;">Поездок</th>
+                <th style="padding:10px 14px;text-align:right;">Пробег (км)</th>
+                <th style="padding:10px 14px;text-align:right;">Расход (л)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in drivers_stats %}
+            <tr style="{% cycle 'background:#FFF5EE' 'background:#fff' %}">
+                <td style="padding:9px 14px;border-bottom:1px solid #eee;">{{ d.employee.full_name }}</td>
+                <td style="padding:9px 14px;border-bottom:1px solid #eee;">{{ d.automobile|default:"—" }}</td>
+                <td style="padding:9px 14px;border-bottom:1px solid #eee;text-align:right;">{{ d.trips|default:"—" }}</td>
+                <td style="padding:9px 14px;border-bottom:1px solid #eee;text-align:right;">{{ d.total_mileage|default:"—"|floatformat:1 }}</td>
+                <td style="padding:9px 14px;border-bottom:1px solid #eee;text-align:right;">{{ d.total_fuel|default:"—"|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" style="padding:20px;text-align:center;color:#999;">Нет водителей</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

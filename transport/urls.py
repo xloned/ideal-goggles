@@ -26,4 +26,10 @@ urlpatterns = [
 
     # AJAX
     path('api/driver/<int:driver_id>/auto/', views.get_driver_auto, name='driver_auto_api'),
+
+    # Статистика и диаграммы
+    path('statistics/', views.statistics, name='statistics'),
+    path('charts/mileage-by-auto/', views.chart_mileage_by_auto, name='chart_mileage_by_auto'),
+    path('charts/fuel-by-driver/', views.chart_fuel_by_driver, name='chart_fuel_by_driver'),
+    path('charts/trips-pie/', views.chart_trips_pie, name='chart_trips_pie'),
 ]

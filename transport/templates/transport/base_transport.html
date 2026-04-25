@@ -17,6 +17,7 @@
         <a href="{% url 'transport:automobile_list' %}" {% if 'automobile' in request.resolver_match.url_name %}style="background:rgba(255,255,255,.2)"{% endif %}>Автомобили</a>
         <a href="{% url 'transport:driver_list' %}" {% if 'driver' in request.resolver_match.url_name %}style="background:rgba(255,255,255,.2)"{% endif %}>Водители</a>
         <a href="{% url 'transport:waybill_list' %}" {% if 'waybill' in request.resolver_match.url_name %}style="background:rgba(255,255,255,.2)"{% endif %}>Путевые листы</a>
+        <a href="{% url 'transport:statistics' %}" {% if 'statistics' in request.resolver_match.url_name %}style="background:rgba(255,255,255,.2)"{% endif %} style="background:#16a085;">📊 Статистика</a>
         <button class="theme-toggle">Дизайн 2</button>
     </div>
     <aside class="sidebar">
@@ -26,6 +27,7 @@
             <a href="{% url 'transport:automobile_list' %}"><span class="icon">&#128665;</span> Автомобили</a>
             <a href="{% url 'transport:driver_list' %}"><span class="icon">&#128100;</span> Водители</a>
             <a href="{% url 'transport:waybill_list' %}"><span class="icon">&#128196;</span> Путевые листы</a>
+            <a href="{% url 'transport:statistics' %}"><span class="icon">📊</span> Статистика</a>
         </nav>
         <button class="theme-toggle">Дизайн 1</button>
     </aside>

@@ -1,11 +1,19 @@
 """
 Лабораторная работа №9 — Новые информационные объекты.
-Учёт пробега автотранспорта: справочники и путевые листы.
+Учёт пробега автотранспорта: справочники, путевые листы, статистика.
 """
 
+import io
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import numpy as np
+
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse
 from django.contrib import messages
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Avg
 from decimal import Decimal
 
 from .models import Automobile, Driver, Waybill
@@ -186,3 +194,160 @@ def get_driver_auto(request, driver_id):
     except Driver.DoesNotExist:
         data = {'id': None, 'name': '', 'fuel_norm': None}
     return JsonResponse(data)
+
+
+# ── Статистика / Диаграммы ──────────────────────────────────
+
+def statistics(request):
+    """
+    Страница статистики Лаб. №9.
+    Показывает сводную таблицу и ссылки на диаграммы:
+      • Гистограмма пробега по автомобилям
+      • Гистограмма расхода топлива по водителям
+      • Диаграмма кол-ва поездок по автомобилям
+    """
+    # Пробег по автомобилям
+    autos_stats = (
+        Automobile.objects
+        .annotate(
+            total_mileage=Sum('waybills__mileage'),
+            total_fuel=Sum('waybills__fuel_consumption'),
+            trips=Count('waybills'),
+        )
+        .order_by('-total_mileage')
+    )
+
+    # Пробег по водителям
+    drivers_stats = (
+        Driver.objects
+        .select_related('employee', 'automobile')
+        .annotate(
+            total_mileage=Sum('waybills__mileage'),
+            total_fuel=Sum('waybills__fuel_consumption'),
+            trips=Count('waybills'),
+        )
+        .order_by('-total_mileage')
+    )
+
+    # Общая сводка
+    totals = Waybill.objects.aggregate(
+        total_mileage=Sum('mileage'),
+        total_fuel=Sum('fuel_consumption'),
+        total_trips=Count('id'),
+    )
+
+    return render(request, 'transport/statistics.html', {
+        'autos_stats': autos_stats,
+        'drivers_stats': drivers_stats,
+        'totals': totals,
+    })
+
+
+def chart_mileage_by_auto(request):
+    """Гистограмма: суммарный пробег по каждому автомобилю (PNG)."""
+    data = (
+        Automobile.objects
+        .annotate(total_mileage=Sum('waybills__mileage'))
+        .filter(total_mileage__isnull=False)
+        .order_by('-total_mileage')
+    )
+
+    labels = [f"{a.make}\n{a.state_number}" for a in data]
+    values = [float(a.total_mileage or 0) for a in data]
+
+    fig, ax = plt.subplots(figsize=(max(7, len(labels) * 1.4), 5))
+    colors = plt.cm.Blues(np.linspace(0.45, 0.9, max(len(values), 1)))[::-1]
+    bars = ax.bar(labels, values, color=colors, edgecolor='#1F4E79', linewidth=0.8)
+
+    for bar, val in zip(bars, values):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + max(values) * 0.01,
+                f'{val:,.0f} км', ha='center', va='bottom', fontsize=9, fontweight='bold')
+
+    ax.set_title('Пробег по автомобилям', fontsize=14, fontweight='bold', pad=15)
+    ax.set_ylabel('Пробег (км)', fontsize=11)
+    ax.set_xlabel('Автомобиль', fontsize=11)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.yaxis.grid(True, alpha=0.3, linestyle='--')
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight')
+    plt.close(fig)
+    buf.seek(0)
+    return HttpResponse(buf.getvalue(), content_type='image/png')
+
+
+def chart_fuel_by_driver(request):
+    """Гистограмма: расход топлива по водителям (PNG)."""
+    data = (
+        Driver.objects
+        .select_related('employee')
+        .annotate(total_fuel=Sum('waybills__fuel_consumption'))
+        .filter(total_fuel__isnull=False)
+        .order_by('-total_fuel')
+    )
+
+    labels = [d.employee.full_name for d in data]
+    values = [float(d.total_fuel or 0) for d in data]
+
+    fig, ax = plt.subplots(figsize=(max(7, len(labels) * 1.4), 5))
+    colors = plt.cm.Oranges(np.linspace(0.4, 0.85, max(len(values), 1)))[::-1]
+    bars = ax.bar(labels, values, color=colors, edgecolor='#7B3F00', linewidth=0.8)
+
+    for bar, val in zip(bars, values):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + max(values) * 0.01,
+                f'{val:,.1f} л', ha='center', va='bottom', fontsize=9, fontweight='bold')
+
+    ax.set_title('Расход топлива по водителям', fontsize=14, fontweight='bold', pad=15)
+    ax.set_ylabel('Расход топлива (л)', fontsize=11)
+    ax.set_xlabel('Водитель', fontsize=11)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.yaxis.grid(True, alpha=0.3, linestyle='--')
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight')
+    plt.close(fig)
+    buf.seek(0)
+    return HttpResponse(buf.getvalue(), content_type='image/png')
+
+
+def chart_trips_pie(request):
+    """Круговая диаграмма: доля поездок по автомобилям (PNG)."""
+    data = (
+        Automobile.objects
+        .annotate(trips=Count('waybills'))
+        .filter(trips__gt=0)
+        .order_by('-trips')
+    )
+
+    labels = [f"{a.make} {a.state_number}" for a in data]
+    values = [a.trips for a in data]
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    palette = plt.cm.Set3(np.linspace(0, 1, max(len(values), 1)))
+    wedges, texts, autotexts = ax.pie(
+        values, labels=None, autopct='%1.0f%%',
+        colors=palette, startangle=140,
+        wedgeprops={'edgecolor': 'white', 'linewidth': 1.5},
+        pctdistance=0.75,
+    )
+    for at in autotexts:
+        at.set_fontsize(9)
+        at.set_fontweight('bold')
+
+    ax.legend(wedges, [f"{l} ({v} поездок)" for l, v in zip(labels, values)],
+              loc='lower left', fontsize=8, framealpha=0.8)
+    ax.set_title('Распределение поездок по автомобилям',
+                 fontsize=13, fontweight='bold', pad=15)
+    fig.tight_layout()
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight')
+    plt.close(fig)
+    buf.seek(0)
+    return HttpResponse(buf.getvalue(), content_type='image/png')
