@@ -1,0 +1,44 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>{% block title %}Лаб 10{% endblock %} — Бухгалтерские отчёты</title>
+    <link rel="stylesheet" href="{% static 'css/common.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v1.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme-v2.css' %}">
+    <script>(function(){var t=localStorage.getItem('arm-theme')||'theme-v1';document.documentElement.style.visibility='hidden';document.addEventListener('DOMContentLoaded',function(){document.body.className=t;document.documentElement.style.visibility='';});})()</script>
+</head>
+<body>
+<div class="nav-top">
+    <span class="brand">Лаб 10</span>
+    <a href="{% url 'index' %}">&#8592; АРМ</a>
+    <a href="{% url 'lab10:index' %}">Отчёты</a>
+    <a href="{% url 'lab10:stock' %}">Остатки товаров</a>
+    <a href="{% url 'lab10:advances' %}">Подотчётники</a>
+    <a href="{% url 'lab10:expenses' %}">Издержки</a>
+    <button class="theme-toggle">Дизайн 2</button>
+</div>
+<aside class="sidebar">
+    <div class="brand">Лаб 10<small>Бухгалтерские отчёты</small></div>
+    <nav>
+        <a href="{% url 'index' %}"><span class="icon">&#8592;</span> АРМ</a>
+        <a href="{% url 'lab10:index' %}"><span class="icon">&#128196;</span> Все отчёты</a>
+        <a href="{% url 'lab10:stock' %}"><span class="icon">&#128230;</span> Остатки товаров</a>
+        <a href="{% url 'lab10:advances' %}"><span class="icon">&#128184;</span> Подотчётники</a>
+        <a href="{% url 'lab10:expenses' %}"><span class="icon">&#128200;</span> Издержки</a>
+    </nav>
+    <button class="theme-toggle">Дизайн 1</button>
+</aside>
+<div class="main-content"><div class="content-wrap">
+{% if messages %}
+{% for msg in messages %}
+<div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
+{% endfor %}
+{% endif %}
+{% block content %}{% endblock %}
+</div></div>
+<script src="{% static 'js/theme.js' %}"></script>
+</body>
+</html>

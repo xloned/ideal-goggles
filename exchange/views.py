@@ -25,6 +25,12 @@ matplotlib.use('Agg')           # без GUI — для Django
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.chart import BarChart, Reference
+from openpyxl.chart.label import DataLabelList
+from openpyxl.utils import get_column_letter
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
@@ -249,6 +255,130 @@ def visualizer_view(request):
         'error': error,
         'processed_exists': os.path.exists(PROCESSED_FILE),
     })
+
+
+def export_excel(request):
+    """
+    Лаб 3 — Визуализатор через Microsoft Excel (openpyxl).
+    Генерирует .xlsx-файл с таблицей агрегированных данных и встроенной
+    столбчатой диаграммой — аналог Excel OLE из оригинального задания на Delphi.
+    """
+    if not os.path.exists(PROCESSED_FILE):
+        messages.error(request, 'Нет обработанных данных. Запустите Сервер.')
+        return redirect('exchange:server')
+
+    with open(PROCESSED_FILE, encoding='utf-8') as f:
+        processed = json.load(f)
+
+    groups = processed.get('groups', [])
+    if not groups:
+        messages.error(request, 'Нет данных для выгрузки.')
+        return redirect('exchange:visualizer')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Прибыль по группам'
+
+    # ── Стили ──────────────────────────────────────────────────
+    hdr_fill   = PatternFill('solid', fgColor='4472C4')
+    hdr_font   = Font(bold=True, color='FFFFFF', size=11)
+    even_fill  = PatternFill('solid', fgColor='DCE6F1')
+    thin       = Side(style='thin', color='BBBBBB')
+    border     = Border(left=thin, right=thin, top=thin, bottom=thin)
+    money_fmt  = '#,##0.00 ₽'
+    center     = Alignment(horizontal='center', vertical='center')
+
+    # ── Заголовок листа ────────────────────────────────────────
+    ws.merge_cells('A1:E1')
+    title_cell = ws['A1']
+    title_cell.value = 'Прибыль по группам товаров (Лаб 3 — Вариант 6)'
+    title_cell.font  = Font(bold=True, size=14, color='1F3864')
+    title_cell.alignment = center
+    ws.row_dimensions[1].height = 28
+
+    # ── Строка заголовков таблицы ──────────────────────────────
+    headers = ['Группа товара', 'Кол-во записей', 'Выручка (руб.)', 'Себестоимость (руб.)', 'Прибыль (руб.)']
+    col_widths = [22, 16, 20, 22, 20]
+    for col_i, (h, w) in enumerate(zip(headers, col_widths), start=1):
+        cell = ws.cell(row=2, column=col_i, value=h)
+        cell.fill = hdr_fill
+        cell.font = hdr_font
+        cell.alignment = center
+        cell.border = border
+        ws.column_dimensions[get_column_letter(col_i)].width = w
+    ws.row_dimensions[2].height = 20
+
+    # ── Данные ─────────────────────────────────────────────────
+    data_start_row = 3
+    for row_i, g in enumerate(groups, start=data_start_row):
+        fill = even_fill if row_i % 2 == 0 else PatternFill()
+        row_data = [g['group'], g['count'], g['revenue'], g['cost'], g['profit']]
+        for col_i, val in enumerate(row_data, start=1):
+            cell = ws.cell(row=row_i, column=col_i, value=val)
+            cell.border = border
+            cell.fill   = fill
+            cell.alignment = center
+            if col_i >= 3:
+                cell.number_format = money_fmt
+                # Отрицательная прибыль — красным
+                if col_i == 5 and isinstance(val, (int, float)) and val < 0:
+                    cell.font = Font(color='C00000', bold=True)
+
+    # ── Строка итогов ──────────────────────────────────────────
+    total_row = data_start_row + len(groups)
+    ws.cell(row=total_row, column=1, value='ИТОГО').font = Font(bold=True)
+    ws.cell(row=total_row, column=1).alignment = center
+    ws.cell(row=total_row, column=1).border = border
+
+    ws.cell(row=total_row, column=2, value=sum(g['count'] for g in groups)).border = border
+    ws.cell(row=total_row, column=2).alignment = center
+    for col_i, key in [(3, 'revenue'), (4, 'cost'), (5, 'profit')]:
+        cell = ws.cell(row=total_row, column=col_i,
+                       value=sum(g[key] for g in groups))
+        cell.font = Font(bold=True)
+        cell.number_format = money_fmt
+        cell.border = border
+        cell.alignment = center
+        cell.fill = PatternFill('solid', fgColor='BDD7EE')
+
+    # ── Диаграмма (встроенная в Excel — ключевое требование Лаб 3) ────
+    chart = BarChart()
+    chart.type      = 'col'
+    chart.grouping  = 'clustered'
+    chart.title     = 'Прибыль по группам товаров'
+    chart.y_axis.title = 'Сумма (руб.)'
+    chart.x_axis.title = 'Группа'
+    chart.style     = 10
+    chart.width     = 20
+    chart.height    = 12
+
+    n = len(groups)
+    # Выручка (колонка C), Себестоимость (D), Прибыль (E)
+    for col_i, series_title in [(3, 'Выручка'), (4, 'Себестоимость'), (5, 'Прибыль')]:
+        data_ref  = Reference(ws, min_col=col_i, min_row=data_start_row,
+                              max_row=data_start_row + n - 1)
+        ser = openpyxl.chart.Series(data_ref, title=series_title)
+        chart.series.append(ser)
+
+    cats = Reference(ws, min_col=1, min_row=data_start_row,
+                     max_row=data_start_row + n - 1)
+    chart.set_categories(cats)
+
+    # Разместить диаграмму правее таблицы
+    chart_anchor = f'G2'
+    ws.add_chart(chart, chart_anchor)
+
+    # ── Отдать файл как вложение ───────────────────────────────
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    response = HttpResponse(
+        buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = 'attachment; filename="lab3_profit_report.xlsx"'
+    return response
 
 
 def chart_image(request):

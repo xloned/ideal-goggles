@@ -16,4 +16,7 @@ urlpatterns = [
     # Визуализатор — программа 3
     path('visualizer/', views.visualizer_view, name='visualizer'),
     path('chart.png', views.chart_image, name='chart'),
+
+    # Экспорт в Excel (Лаб 3 — аналог OLE-диаграммы в Microsoft Excel)
+    path('export/excel/', views.export_excel, name='export_excel'),
 ]

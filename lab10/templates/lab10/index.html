@@ -1,0 +1,38 @@
+{% extends "lab10/base_lab10.html" %}
+{% block title %}Лаб 10{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Лабораторная работа №10</h1>
+    <p>Создание дополнительных бухгалтерских отчётов</p>
+</div>
+<p style="color:#666; margin-bottom:24px;">
+    Аналог «конструктора бухгалтерских запросов» системы 1С Предприятие 7.7.
+    Python/Django/reportlab используется вместо 1С.
+</p>
+<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px;">
+    <div class="card">
+        <h3>&#128230; Остатки товаров</h3>
+        <p class="text-muted">Перечень товаров с общим количеством и стоимостью. Выводит общую сумму по всем позициям склада.</p>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+            <a href="{% url 'lab10:stock' %}" class="btn btn-primary">Открыть</a>
+            <a href="{% url 'lab10:stock_pdf' %}" class="btn btn-outline" target="_blank">&#128196; PDF</a>
+        </div>
+    </div>
+    <div class="card">
+        <h3>&#128184; Подотчётники</h3>
+        <p class="text-muted">Список сотрудников с суммами денежных средств, полученных под отчёт на заданную дату. Выводит общую сумму.</p>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+            <a href="{% url 'lab10:advances' %}" class="btn btn-primary">Открыть</a>
+            <a href="{% url 'lab10:advances_pdf' %}" class="btn btn-outline" target="_blank">&#128196; PDF</a>
+        </div>
+    </div>
+    <div class="card">
+        <h3>&#128200; Издержки организации</h3>
+        <p class="text-muted">Список статей издержек с суммами за выбранный период. Выводит итог по каждой статье и общую сумму.</p>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+            <a href="{% url 'lab10:expenses' %}" class="btn btn-primary">Открыть</a>
+            <a href="{% url 'lab10:expenses_pdf' %}" class="btn btn-outline" target="_blank">&#128196; PDF</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

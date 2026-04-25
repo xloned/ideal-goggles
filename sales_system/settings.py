@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     'staff',
     'transport',
     'docs_lab',
+    'tgbot',
+    'lab10',
 ]
 
 # Authentication

@@ -1,0 +1,55 @@
+{% extends "lab10/base_lab10.html" %}
+{% block title %}Остатки товаров{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Отчёт: Остатки товаров</h1>
+        <p>На дату: {{ report_date }}</p>
+    </div>
+    <a href="{% url 'lab10:stock_pdf' %}" class="btn btn-outline" target="_blank">&#128196; Скачать PDF</a>
+</div>
+
+<div class="card">
+    {% if rows %}
+    <div style="overflow-x:auto;">
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Наименование товара</th>
+                <th style="text-align:right;">Цена (руб.)</th>
+                <th style="text-align:right;">Кол-во (ед.)</th>
+                <th style="text-align:right;">Стоимость (руб.)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in rows %}
+            <tr>
+                <td style="color:#999;">{{ forloop.counter }}</td>
+                <td><strong>{{ r.name }}</strong></td>
+                <td style="text-align:right; font-family:monospace;">{{ r.price }}</td>
+                <td style="text-align:right;">
+                    {% if r.stock == 0 %}
+                    <span class="badge badge-red">0</span>
+                    {% else %}
+                    {{ r.stock }}
+                    {% endif %}
+                </td>
+                <td style="text-align:right; font-weight:600;">{{ r.cost }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" style="font-weight:700; text-align:right;">ИТОГО:</td>
+                <td style="font-weight:700; text-align:right;">{{ total_qty }} ед.</td>
+                <td style="font-weight:700; text-align:right; color:var(--accent);">{{ total_cost }} руб.</td>
+            </tr>
+        </tfoot>
+    </table>
+    </div>
+    {% else %}
+    <p class="text-muted" style="padding:20px;text-align:center;">Товары не найдены. Добавьте товары в разделе <a href="{% url 'product_list' %}">Товары</a>.</p>
+    {% endif %}
+</div>
+{% endblock %}
