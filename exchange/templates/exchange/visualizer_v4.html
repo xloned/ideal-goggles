@@ -1,0 +1,78 @@
+{% extends "exchange/base_exchange.html" %}
+{% block title %}Визуализатор — Вар.4 Датчики{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Программа 3 — Визуализатор</h1>
+        <p class="subtitle">Вариант 4: средняя температура атмосферного воздуха по зонам</p>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger" style="margin-bottom:16px;">
+    {{ error }}<br>
+    <a href="{% url 'exchange:source_v4' %}">&#8592; К Источнику</a>
+</div>
+{% endif %}
+
+{% if processed %}
+
+<!-- Диаграмма -->
+{% if chart_b64 %}
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-header"><h3>{{ processed.parameter }} — диаграмма по зонам</h3></div>
+    <div style="padding:16px; text-align:center;">
+        <img src="data:image/png;base64,{{ chart_b64 }}"
+             alt="Температура по зонам"
+             style="max-width:100%; height:auto; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,.1);">
+    </div>
+    <div style="padding:8px 18px 14px; text-align:center; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+        <a href="{% url 'exchange:chart_v4' %}" download="temperature_chart.png" class="btn btn-outline">
+            &#128190; Скачать PNG
+        </a>
+        <a href="{% url 'exchange:export_excel_v4' %}" class="btn btn-success">
+            &#128202; Скачать Excel (.xlsx) — Лаб 3 Вар.4
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Таблица -->
+<div class="card">
+    <div class="card-header"><h3>Средние значения по зонам</h3></div>
+    <p class="text-muted" style="padding:8px 18px 0;">Обработано показаний: {{ processed.source_records }}</p>
+    <div style="overflow-x:auto;">
+    <table>
+        <thead>
+            <tr>
+                <th>Зона</th>
+                <th style="text-align:right;">Среднее</th>
+                <th style="text-align:right;">Минимум</th>
+                <th style="text-align:right;">Максимум</th>
+                <th style="text-align:right;">Показаний</th>
+                <th style="text-align:right;">Датчиков</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for z in processed.zones %}
+            <tr>
+                <td><strong>Зона {{ z.zone }}</strong></td>
+                <td style="text-align:right; font-weight:700; color:#e67e22;">{{ z.avg }}°C</td>
+                <td style="text-align:right; color:#3498db;">{{ z.min }}°C</td>
+                <td style="text-align:right; color:#e74c3c;">{{ z.max }}°C</td>
+                <td style="text-align:right;">{{ z.count }}</td>
+                <td style="text-align:right;">{{ z.sensor_count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+{% endif %}
+
+<div style="display:flex; gap:12px; margin-top:20px;">
+    <a href="{% url 'exchange:source_v4' %}" class="btn btn-outline">&#8592; К Источнику</a>
+    <a href="{% url 'exchange:server_v4' %}" class="btn btn-outline">&#9881; К Серверу</a>
+</div>
+{% endblock %}

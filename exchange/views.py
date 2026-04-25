@@ -36,12 +36,16 @@ from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.conf import settings
 
-from .models import SalesRecord
+from .models import SalesRecord, SensorReading
 from .forms import SalesRecordForm
 
 # Пути к файлам обмена (промежуточные файлы — аналог dBase/CSV из задания)
+# Вариант 6 (Дизайн 1)
 SOURCE_FILE = os.path.join(settings.BASE_DIR, 'exchange_source.json')
 PROCESSED_FILE = os.path.join(settings.BASE_DIR, 'exchange_processed.json')
+# Вариант 4 (Дизайн 2)
+SOURCE_FILE_V4 = os.path.join(settings.BASE_DIR, 'exchange_source_v4.json')
+PROCESSED_FILE_V4 = os.path.join(settings.BASE_DIR, 'exchange_processed_v4.json')
 
 
 # ─────────────────────────────────────────────────────────────
@@ -449,6 +453,332 @@ def _build_profit_chart_buf(groups):
     ax.set_xlabel('Группа товаров', fontsize=11)
     ax.set_xticks(list(x))
     ax.set_xticklabels(labels, rotation=20, ha='right')
+    ax.legend(fontsize=10)
+    ax.grid(axis='y', linestyle='--', alpha=0.5)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    plt.tight_layout()
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', dpi=120, bbox_inches='tight')
+    plt.close(fig)
+    buf.seek(0)
+    return buf
+
+
+# ═════════════════════════════════════════════════════════════════
+# ВАРИАНТ 4 (Дизайн 2) — Температура атмосферного воздуха
+# Показания датчиков: датчик / место / зона / дата+время / значение
+# Обработка: средние значения по зонам
+# ═════════════════════════════════════════════════════════════════
+
+def source_v4_view(request):
+    """
+    Вариант 4 — Источник (Дизайн 2).
+    Ввод показаний датчиков температуры, экспорт в JSON.
+    """
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'add':
+            try:
+                from django.utils.dateparse import parse_datetime
+                SensorReading.objects.create(
+                    sensor_number=int(request.POST['sensor_number']),
+                    location=request.POST['location'],
+                    zone=int(request.POST['zone']),
+                    reading_time=request.POST['reading_time'],
+                    value=Decimal(request.POST['value'].replace(',', '.')),
+                )
+                messages.success(request, 'Показание добавлено.')
+            except Exception as e:
+                messages.error(request, f'Ошибка: {e}')
+            return redirect('exchange:source_v4')
+
+        elif action == 'delete':
+            ids = request.POST.getlist('ids')
+            SensorReading.objects.filter(id__in=ids).delete()
+            messages.success(request, f'Удалено: {len(ids)} записей.')
+            return redirect('exchange:source_v4')
+
+        elif action == 'export':
+            readings = SensorReading.objects.all()
+            data = {
+                'schema': {
+                    'variant': 4,
+                    'parameter': 'Температура атмосферного воздуха (°C)',
+                    'fields': [
+                        {'code': 'sensor_number', 'name': 'Номер датчика',   'type': 'number',   'transmit': True},
+                        {'code': 'location',      'name': 'Место расположения', 'type': 'string', 'transmit': True},
+                        {'code': 'zone',          'name': 'Номер зоны',      'type': 'number',   'transmit': True},
+                        {'code': 'reading_time',  'name': 'Дата и время',    'type': 'date',     'transmit': True},
+                        {'code': 'value',         'name': 'Температура (°C)','type': 'number',   'transmit': True},
+                    ],
+                },
+                'records': [
+                    {
+                        'sensor_number': r.sensor_number,
+                        'location':      r.location,
+                        'zone':          r.zone,
+                        'reading_time':  r.reading_time.isoformat(),
+                        'value':         float(r.value),
+                    }
+                    for r in readings
+                ],
+            }
+            with open(SOURCE_FILE_V4, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            readings.update(exported=True)
+            messages.success(request, f'Выгружено {readings.count()} показаний в exchange_source_v4.json.')
+            return redirect('exchange:source_v4')
+
+    readings = SensorReading.objects.all()
+    return render(request, 'exchange/source_v4.html', {
+        'readings': readings,
+        'source_exists': os.path.exists(SOURCE_FILE_V4),
+    })
+
+
+def source_v4_delete(request, pk):
+    SensorReading.objects.filter(pk=pk).delete()
+    return redirect('exchange:source_v4')
+
+
+def server_v4_view(request):
+    """
+    Вариант 4 — Сервер (Дизайн 2).
+    Загружает показания датчиков, вычисляет средние температуры по зонам.
+    """
+    source_data = None
+    processed = None
+    error = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'load':
+            if not os.path.exists(SOURCE_FILE_V4):
+                error = 'Файл источника не найден. Сначала выгрузите данные из Источника (Дизайн 2).'
+            else:
+                with open(SOURCE_FILE_V4, encoding='utf-8') as f:
+                    source_data = json.load(f)
+                messages.success(request, 'Данные датчиков загружены.')
+
+        elif action == 'process':
+            if not os.path.exists(SOURCE_FILE_V4):
+                error = 'Данные источника не найдены.'
+            else:
+                with open(SOURCE_FILE_V4, encoding='utf-8') as f:
+                    source_data = json.load(f)
+
+                # Агрегация: среднее по зонам
+                zone_data = defaultdict(lambda: {'sum': 0.0, 'count': 0, 'min': None, 'max': None, 'sensors': set()})
+                for rec in source_data.get('records', []):
+                    z = rec['zone']
+                    v = rec['value']
+                    zd = zone_data[z]
+                    zd['sum'] += v
+                    zd['count'] += 1
+                    zd['min'] = v if zd['min'] is None else min(zd['min'], v)
+                    zd['max'] = v if zd['max'] is None else max(zd['max'], v)
+                    zd['sensors'].add(rec['sensor_number'])
+
+                processed = {
+                    'source_records': len(source_data.get('records', [])),
+                    'parameter': source_data.get('schema', {}).get('parameter', 'Температура'),
+                    'zones': [
+                        {
+                            'zone': z,
+                            'avg': round(d['sum'] / d['count'], 2) if d['count'] else 0,
+                            'min': round(d['min'], 2) if d['min'] is not None else 0,
+                            'max': round(d['max'], 2) if d['max'] is not None else 0,
+                            'count': d['count'],
+                            'sensor_count': len(d['sensors']),
+                        }
+                        for z, d in sorted(zone_data.items())
+                    ],
+                }
+
+                with open(PROCESSED_FILE_V4, 'w', encoding='utf-8') as f:
+                    json.dump(processed, f, ensure_ascii=False, indent=2)
+
+                messages.success(request, 'Данные обработаны: средние по зонам рассчитаны.')
+
+    else:
+        if os.path.exists(SOURCE_FILE_V4):
+            with open(SOURCE_FILE_V4, encoding='utf-8') as f:
+                source_data = json.load(f)
+        if os.path.exists(PROCESSED_FILE_V4):
+            with open(PROCESSED_FILE_V4, encoding='utf-8') as f:
+                processed = json.load(f)
+
+    return render(request, 'exchange/server_v4.html', {
+        'source_data': source_data,
+        'processed': processed,
+        'error': error,
+        'source_exists': os.path.exists(SOURCE_FILE_V4),
+        'processed_exists': os.path.exists(PROCESSED_FILE_V4),
+    })
+
+
+def visualizer_v4_view(request):
+    """
+    Вариант 4 — Визуализатор (Дизайн 2).
+    Отображает средние температуры по зонам в виде диаграммы + таблицы.
+    """
+    processed = None
+    chart_b64 = None
+    error = None
+
+    if os.path.exists(PROCESSED_FILE_V4):
+        with open(PROCESSED_FILE_V4, encoding='utf-8') as f:
+            processed = json.load(f)
+        zones = processed.get('zones', [])
+        if zones:
+            chart_b64 = _build_sensor_chart(zones, processed.get('parameter', 'Температура'))
+    else:
+        error = 'Нет обработанных данных. Запустите сервер-обработчик (Дизайн 2).'
+
+    return render(request, 'exchange/visualizer_v4.html', {
+        'processed': processed,
+        'chart_b64': chart_b64,
+        'error': error,
+        'processed_exists': os.path.exists(PROCESSED_FILE_V4),
+    })
+
+
+def chart_image_v4(request):
+    """PNG диаграммы для варианта 4."""
+    if not os.path.exists(PROCESSED_FILE_V4):
+        return HttpResponse(status=404)
+    with open(PROCESSED_FILE_V4, encoding='utf-8') as f:
+        processed = json.load(f)
+    zones = processed.get('zones', [])
+    if not zones:
+        return HttpResponse(status=204)
+    buf = _build_sensor_chart_buf(zones, processed.get('parameter', 'Температура'))
+    return HttpResponse(buf.getvalue(), content_type='image/png')
+
+
+def export_excel_v4(request):
+    """
+    Вариант 4 — Экспорт в Excel (Дизайн 2).
+    Таблица средних температур по зонам + диаграмма.
+    """
+    if not os.path.exists(PROCESSED_FILE_V4):
+        messages.error(request, 'Нет обработанных данных. Запустите Сервер (Дизайн 2).')
+        return redirect('exchange:server_v4')
+
+    with open(PROCESSED_FILE_V4, encoding='utf-8') as f:
+        processed = json.load(f)
+
+    zones = processed.get('zones', [])
+    if not zones:
+        messages.error(request, 'Нет данных для выгрузки.')
+        return redirect('exchange:visualizer_v4')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Температура по зонам'
+
+    hdr_fill  = PatternFill('solid', fgColor='1F4E79')
+    hdr_font  = Font(bold=True, color='FFFFFF', size=11)
+    even_fill = PatternFill('solid', fgColor='DDEEFF')
+    thin      = Side(style='thin', color='BBBBBB')
+    border    = Border(left=thin, right=thin, top=thin, bottom=thin)
+    center    = Alignment(horizontal='center', vertical='center')
+    temp_fmt  = '0.00 "°C"'
+
+    ws.merge_cells('A1:F1')
+    ws['A1'].value = f'Температура атмосферного воздуха по зонам (Лаб 3 — Вариант 4)'
+    ws['A1'].font  = Font(bold=True, size=14, color='1F4E79')
+    ws['A1'].alignment = center
+    ws.row_dimensions[1].height = 28
+
+    headers = ['Зона', 'Кол-во датчиков', 'Кол-во показаний', 'Среднее (°C)', 'Мин (°C)', 'Макс (°C)']
+    widths  = [8, 16, 18, 16, 14, 14]
+    for col_i, (h, w) in enumerate(zip(headers, widths), start=1):
+        cell = ws.cell(row=2, column=col_i, value=h)
+        cell.fill = hdr_fill; cell.font = hdr_font
+        cell.alignment = center; cell.border = border
+        ws.column_dimensions[get_column_letter(col_i)].width = w
+
+    data_start = 3
+    for row_i, z in enumerate(zones, start=data_start):
+        fill = even_fill if row_i % 2 == 0 else PatternFill()
+        row_vals = [z['zone'], z['sensor_count'], z['count'], z['avg'], z['min'], z['max']]
+        for col_i, val in enumerate(row_vals, start=1):
+            cell = ws.cell(row=row_i, column=col_i, value=val)
+            cell.border = border; cell.fill = fill; cell.alignment = center
+            if col_i >= 4:
+                cell.number_format = temp_fmt
+
+    total_row = data_start + len(zones)
+    ws.cell(row=total_row, column=1, value='ИТОГО').font = Font(bold=True)
+    ws.cell(row=total_row, column=1).border = border
+    ws.cell(row=total_row, column=1).alignment = center
+    ws.cell(row=total_row, column=3, value=sum(z['count'] for z in zones)).border = border
+    ws.cell(row=total_row, column=3).alignment = center
+    avg_all = round(sum(z['avg'] for z in zones) / len(zones), 2) if zones else 0
+    cell = ws.cell(row=total_row, column=4, value=avg_all)
+    cell.font = Font(bold=True); cell.number_format = temp_fmt
+    cell.border = border; cell.alignment = center
+    cell.fill = PatternFill('solid', fgColor='BDD7EE')
+
+    # Диаграмма
+    chart = BarChart()
+    chart.type = 'col'; chart.grouping = 'clustered'
+    chart.title = 'Средняя температура по зонам (°C)'
+    chart.y_axis.title = 'Температура (°C)'; chart.x_axis.title = 'Зона'
+    chart.style = 10; chart.width = 20; chart.height = 12
+    n = len(zones)
+    for col_i, title in [(4, 'Среднее'), (5, 'Минимум'), (6, 'Максимум')]:
+        data_ref = Reference(ws, min_col=col_i, min_row=data_start, max_row=data_start + n - 1)
+        chart.series.append(openpyxl.chart.Series(data_ref, title=title))
+    chart.set_categories(Reference(ws, min_col=1, min_row=data_start, max_row=data_start + n - 1))
+    ws.add_chart(chart, 'H2')
+
+    buf = io.BytesIO()
+    wb.save(buf); buf.seek(0)
+    resp = HttpResponse(buf.getvalue(),
+                        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resp['Content-Disposition'] = 'attachment; filename="lab3_v4_temperature_report.xlsx"'
+    return resp
+
+
+def _build_sensor_chart(zones, parameter='Температура'):
+    buf = _build_sensor_chart_buf(zones, parameter)
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
+
+
+def _build_sensor_chart_buf(zones, parameter='Температура'):
+    labels = [f'Зона {z["zone"]}' for z in zones]
+    avgs   = [z['avg'] for z in zones]
+    mins   = [z['min'] for z in zones]
+    maxs   = [z['max'] for z in zones]
+    x = range(len(labels))
+    width = 0.26
+
+    fig, ax = plt.subplots(figsize=(max(8, len(labels) * 1.8), 6))
+    fig.patch.set_facecolor('#f8f9fa')
+    ax.set_facecolor('#ffffff')
+
+    bars_min = ax.bar([i - width for i in x], mins, width, label='Мин', color='#3498db', alpha=0.85)
+    bars_avg = ax.bar(list(x), avgs, width, label='Среднее', color='#e67e22', alpha=0.90)
+    bars_max = ax.bar([i + width for i in x], maxs, width, label='Макс', color='#e74c3c', alpha=0.85)
+
+    for bar in bars_avg:
+        h = bar.get_height()
+        ax.annotate(f'{h:.1f}°',
+                    xy=(bar.get_x() + bar.get_width() / 2, h),
+                    xytext=(0, 4), textcoords='offset points',
+                    ha='center', va='bottom', fontsize=9, color='#e67e22', fontweight='bold')
+
+    ax.set_title(f'{parameter} по зонам', fontsize=14, fontweight='bold', pad=16)
+    ax.set_ylabel('Температура (°C)', fontsize=11)
+    ax.set_xlabel('Зона (сектор)', fontsize=11)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(labels, rotation=0)
     ax.legend(fontsize=10)
     ax.grid(axis='y', linestyle='--', alpha=0.5)
     ax.spines['top'].set_visible(False)

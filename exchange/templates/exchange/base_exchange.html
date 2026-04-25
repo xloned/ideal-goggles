@@ -20,33 +20,27 @@
     </script>
 </head>
 <body>
-    <!-- V1: Горизонтальная навигация -->
+    <!-- V1: Горизонтальная навигация (Вариант 6) -->
     <div class="nav-top">
-        <span class="brand">Лаб 3: Обмен данными</span>
-        <a href="{% url 'index' %}">&#8592; АРМ Продажи</a>
-        <a href="{% url 'exchange:source' %}" {% if request.resolver_match.url_name == 'source' %}style="background:rgba(255,255,255,.2)"{% endif %}>
-            Источник
-        </a>
-        <a href="{% url 'exchange:server' %}" {% if request.resolver_match.url_name == 'server' %}style="background:rgba(255,255,255,.2)"{% endif %}>
-            Сервер
-        </a>
-        <a href="{% url 'exchange:visualizer' %}" {% if request.resolver_match.url_name == 'visualizer' %}style="background:rgba(255,255,255,.2)"{% endif %}>
-            Визуализатор
-        </a>
+        <span class="brand">Лаб 3 · Вар.6</span>
+        <a href="{% url 'index' %}">&#8592; АРМ</a>
+        <a href="{% url 'exchange:source' %}" {% if request.resolver_match.url_name == 'source' %}style="background:rgba(255,255,255,.2)"{% endif %}>Источник</a>
+        <a href="{% url 'exchange:server' %}" {% if request.resolver_match.url_name == 'server' %}style="background:rgba(255,255,255,.2)"{% endif %}>Сервер</a>
+        <a href="{% url 'exchange:visualizer' %}" {% if request.resolver_match.url_name == 'visualizer' %}style="background:rgba(255,255,255,.2)"{% endif %}>Визуализатор</a>
         <button class="theme-toggle">Дизайн 2</button>
     </div>
 
-    <!-- V2: Боковая навигация -->
+    <!-- V2: Боковая навигация (Вариант 4) -->
     <aside class="sidebar">
         <div class="brand">
-            Лаб 3
-            <small>Обмен данными</small>
+            Лаб 3 · Вар.4
+            <small>Температура воздуха</small>
         </div>
         <nav>
-            <a href="{% url 'index' %}"><span class="icon">&#8592;</span> АРМ Продажи</a>
-            <a href="{% url 'exchange:source' %}"><span class="icon">&#128229;</span> Программа 1: Источник</a>
-            <a href="{% url 'exchange:server' %}"><span class="icon">&#9881;</span> Программа 2: Сервер</a>
-            <a href="{% url 'exchange:visualizer' %}"><span class="icon">&#128202;</span> Программа 3: Визуализатор</a>
+            <a href="{% url 'index' %}"><span class="icon">&#8592;</span> АРМ</a>
+            <a href="{% url 'exchange:source_v4' %}"><span class="icon">&#128229;</span> Источник (датчики)</a>
+            <a href="{% url 'exchange:server_v4' %}"><span class="icon">&#9881;</span> Сервер (обработка)</a>
+            <a href="{% url 'exchange:visualizer_v4' %}"><span class="icon">&#128202;</span> Визуализатор</a>
         </nav>
         <button class="theme-toggle">Дизайн 1</button>
     </aside>
@@ -63,6 +57,29 @@
     </div>
 
     <script src="{% static 'js/theme.js' %}"></script>
+    <script>
+    // При смене темы перенаправляем между V6 и V4 страницами Лаб 3
+    (function(){
+        var v6ToV4 = {
+            '{% url "exchange:source" %}':     '{% url "exchange:source_v4" %}',
+            '{% url "exchange:server" %}':     '{% url "exchange:server_v4" %}',
+            '{% url "exchange:visualizer" %}': '{% url "exchange:visualizer_v4" %}',
+        };
+        var v4ToV6 = {};
+        for(var k in v6ToV4) v4ToV6[v6ToV4[k]] = k;
+
+        document.querySelectorAll('.theme-toggle').forEach(function(btn){
+            btn.addEventListener('click', function(){
+                var cur = window.location.pathname;
+                var nextTheme = (localStorage.getItem('arm-theme') || 'theme-v1') === 'theme-v1' ? 'theme-v2' : 'theme-v1';
+                var redirect = null;
+                if(nextTheme === 'theme-v2' && v6ToV4[cur]) redirect = v6ToV4[cur];
+                if(nextTheme === 'theme-v1' && v4ToV6[cur]) redirect = v4ToV6[cur];
+                if(redirect){ setTimeout(function(){ window.location.href = redirect; }, 50); }
+            }, true); // capture phase — до стандартного обработчика темы
+        });
+    })();
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

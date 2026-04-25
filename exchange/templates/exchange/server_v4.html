@@ -1,0 +1,80 @@
+{% extends "exchange/base_exchange.html" %}
+{% block title %}Сервер — Вар.4 Датчики{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Программа 2 — Сервер-обработчик</h1>
+    <p class="subtitle">Вариант 4: усреднение показаний температуры по зонам</p>
+</div>
+
+<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:24px;">
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="load">
+        <button class="btn btn-outline" {% if not source_exists %}disabled{% endif %}>
+            &#128228; Загрузить от Источника
+        </button>
+    </form>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="process">
+        <button class="btn btn-primary" {% if not source_exists %}disabled{% endif %}>
+            &#9881; Обработать и передать Визуализатору
+        </button>
+    </form>
+    {% if processed_exists %}
+    <a href="{% url 'exchange:visualizer_v4' %}" class="btn btn-success">&#128202; Перейти к Визуализатору</a>
+    {% endif %}
+</div>
+
+{% if error %}<div class="alert alert-danger" style="margin-bottom:16px;">{{ error }}</div>{% endif %}
+
+{% if source_data %}
+<div class="card" style="margin-bottom:20px;">
+    <h3>Данные от Источника (exchange_source_v4.json)</h3>
+    <p class="text-muted" style="margin:6px 0 12px;">
+        Параметр: <strong>{{ source_data.schema.parameter }}</strong> ·
+        Записей: <strong>{{ source_data.records|length }}</strong>
+    </p>
+    <div style="overflow-x:auto; max-height:300px; overflow-y:auto;">
+    <table>
+        <thead><tr><th>Датчик</th><th>Место</th><th>Зона</th><th>Дата и время</th><th>Темп. (°C)</th></tr></thead>
+        <tbody>
+        {% for r in source_data.records %}
+        <tr>
+            <td style="font-family:monospace;">{{ r.sensor_number }}</td>
+            <td>{{ r.location }}</td>
+            <td style="text-align:center;"><span class="badge badge-blue">{{ r.zone }}</span></td>
+            <td style="font-size:12px;">{{ r.reading_time }}</td>
+            <td style="font-weight:600; color:{% if r.value < 0 %}#3498db{% else %}#e74c3c{% endif %};">{{ r.value }}°C</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endif %}
+
+{% if processed %}
+<div class="card">
+    <h3>Результат обработки — средние по зонам (exchange_processed_v4.json)</h3>
+    <p class="text-muted" style="margin:6px 0 12px;">Обработано записей: {{ processed.source_records }}</p>
+    <table>
+        <thead>
+            <tr><th>Зона</th><th>Датчиков</th><th>Показаний</th><th style="text-align:right;">Среднее</th><th style="text-align:right;">Мин</th><th style="text-align:right;">Макс</th></tr>
+        </thead>
+        <tbody>
+        {% for z in processed.zones %}
+        <tr>
+            <td><span class="badge badge-blue">Зона {{ z.zone }}</span></td>
+            <td>{{ z.sensor_count }}</td>
+            <td>{{ z.count }}</td>
+            <td style="text-align:right; font-weight:700; color:#e67e22;">{{ z.avg }}°C</td>
+            <td style="text-align:right; color:#3498db;">{{ z.min }}°C</td>
+            <td style="text-align:right; color:#e74c3c;">{{ z.max }}°C</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

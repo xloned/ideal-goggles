@@ -1,10 +1,12 @@
 """
 Лабораторная работа №3 — Обмен данными между программами.
-Вариант 6: Продажи товаров через кассовый аппарат.
 
-Модели для программы-источника (ввод данных о продажах).
-Обработка: расчёт прибыли по группам товаров.
-Визуализация: matplotlib-диаграмма прибыли по группам.
+Вариант 6 (Дизайн 1): Продажи товаров через кассовый аппарат.
+  Обработка: расчёт прибыли по группам товаров.
+
+Вариант 4 (Дизайн 2): Показания датчиков температуры атмосферного воздуха.
+  Поля: номер датчика, место расположения, номер зоны, дата+время, значение.
+  Обработка: средние значения температуры по каждой зоне.
 """
 
 from django.db import models
@@ -63,3 +65,30 @@ class SalesRecord(models.Model):
         Формула согласно заданию.
         """
         return self.revenue - self.cost
+
+
+class SensorReading(models.Model):
+    """
+    Вариант 4: показание датчика температуры атмосферного воздуха.
+    Поля согласно заданию вариантов 4–5 лаб. работы №3:
+      sensor_number  — номер датчика;
+      location       — место расположения датчика;
+      zone           — номер зоны (сектора) расположения;
+      reading_time   — дата и время показания;
+      value          — значение параметра (температура, °C).
+    """
+
+    sensor_number = models.IntegerField('Номер датчика')
+    location = models.CharField('Место расположения', max_length=200)
+    zone = models.IntegerField('Номер зоны (сектора)')
+    reading_time = models.DateTimeField('Дата и время показания')
+    value = models.DecimalField('Температура (°C)', max_digits=7, decimal_places=2)
+    exported = models.BooleanField('Выгружен', default=False)
+
+    class Meta:
+        verbose_name = 'Показание датчика'
+        verbose_name_plural = 'Показания датчиков'
+        ordering = ['-reading_time']
+
+    def __str__(self):
+        return f'Датчик {self.sensor_number} / Зона {self.zone} — {self.value}°C ({self.reading_time:%d.%m.%Y %H:%M})'

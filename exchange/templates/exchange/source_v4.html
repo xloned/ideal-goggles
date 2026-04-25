@@ -1,0 +1,107 @@
+{% extends "exchange/base_exchange.html" %}
+{% block title %}Источник — Вар.4 Датчики{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Программа 1 — Источник</h1>
+        <p class="subtitle">Вариант 4: Температура атмосферного воздуха · Ввод показаний датчиков</p>
+    </div>
+</div>
+
+<!-- Форма добавления -->
+<div class="card" style="margin-bottom:24px;">
+    <h3 style="margin-bottom:16px;">Добавить показание датчика</h3>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px;">
+            <div class="form-group">
+                <label>Номер датчика</label>
+                <input type="number" name="sensor_number" min="1" required placeholder="101">
+            </div>
+            <div class="form-group">
+                <label>Место расположения</label>
+                <input type="text" name="location" required placeholder="Северный парк">
+            </div>
+            <div class="form-group">
+                <label>Номер зоны (сектора)</label>
+                <input type="number" name="zone" min="1" required placeholder="1">
+            </div>
+            <div class="form-group">
+                <label>Дата и время</label>
+                <input type="datetime-local" name="reading_time" required>
+            </div>
+            <div class="form-group">
+                <label>Температура (°C)</label>
+                <input type="number" step="0.01" name="value" required placeholder="-3.5">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-success" style="margin-top:8px;">+ Добавить показание</button>
+    </form>
+</div>
+
+<!-- Таблица показаний -->
+<div class="card" style="margin-bottom:24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+        <h3>Показания датчиков ({{ readings|length }})</h3>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            {% if readings %}
+            <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="export">
+                <button type="submit" class="btn btn-primary">&#128229; Выгрузить в JSON</button>
+            </form>
+            {% endif %}
+            {% if source_exists %}
+            <span class="badge badge-green" style="padding:6px 12px; align-self:center;">JSON готов</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if readings %}
+    <div style="overflow-x:auto;">
+    <form method="post" id="del-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete">
+        <table>
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="check-all" onclick="document.querySelectorAll('input[name=ids]').forEach(c=>c.checked=this.checked)"></th>
+                    <th>Датчик #</th><th>Место</th><th>Зона</th><th>Дата и время</th><th>Температура</th><th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in readings %}
+                <tr>
+                    <td><input type="checkbox" name="ids" value="{{ r.pk }}"></td>
+                    <td style="font-family:monospace;">{{ r.sensor_number }}</td>
+                    <td>{{ r.location }}</td>
+                    <td style="text-align:center;"><span class="badge badge-blue">Зона {{ r.zone }}</span></td>
+                    <td style="font-size:12px; color:#555;">{{ r.reading_time|date:"d.m.Y H:i" }}</td>
+                    <td style="font-weight:700; color:{% if r.value < 0 %}#3498db{% else %}#e74c3c{% endif %};">
+                        {{ r.value }}°C
+                    </td>
+                    <td>
+                        <a href="{% url 'exchange:source_v4_delete' r.pk %}" class="btn btn-outline btn-sm"
+                           style="color:#e74c3c;" onclick="return confirm('Удалить?')">&#128465;</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="padding:10px 0;">
+            <button type="submit" class="btn btn-outline" style="color:#e74c3c;" onclick="return document.querySelectorAll('input[name=ids]:checked').length>0||alert('Выберите записи')">
+                &#128465; Удалить выбранные
+            </button>
+        </div>
+    </form>
+    </div>
+    {% else %}
+    <p class="text-muted" style="text-align:center; padding:20px 0;">Нет показаний. Добавьте данные выше.</p>
+    {% endif %}
+</div>
+
+<div style="display:flex; gap:10px;">
+    <a href="{% url 'exchange:server_v4' %}" class="btn btn-primary">Перейти к Серверу &#8594;</a>
+</div>
+{% endblock %}
