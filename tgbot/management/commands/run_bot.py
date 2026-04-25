@@ -355,7 +355,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        token = options['token'] or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+        from django.conf import settings as django_settings
+        token = (options['token']
+                 or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+                 or getattr(django_settings, 'TELEGRAM_BOT_TOKEN', ''))
         if not token:
             raise CommandError(
                 'Укажите токен бота:\n'

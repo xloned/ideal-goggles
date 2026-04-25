@@ -7,3 +7,4 @@ db.sqlite3
 exchange_source.json
 exchange_processed.json
 *.docx
+.env
