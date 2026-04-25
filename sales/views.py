@@ -122,6 +122,30 @@ def client_edit(request, pk):
     return render(request, "sales/client_form.html", {"client": client})
 
 
+def lab7_inn_demo(request):
+    """
+    Лаб. №7 — Наглядная демо-страница валидации ИНН.
+    Показывает алгоритм ФНС, живой валидатор и статус всех клиентов с ИНН.
+    """
+    from django.core.exceptions import ValidationError
+    from .models import validate_inn as _validate
+
+    clients_with_inn = Client.objects.exclude(inn='').order_by('name')
+    inn_status = []
+    for c in clients_with_inn:
+        try:
+            _validate(c.inn)
+            inn_status.append({'client': c, 'valid': True, 'error': ''})
+        except ValidationError as e:
+            inn_status.append({'client': c, 'valid': False, 'error': e.message})
+
+    return render(request, 'sales/lab7_demo.html', {
+        'inn_status': inn_status,
+        'total_clients': Client.objects.count(),
+        'clients_with_inn': clients_with_inn.count(),
+    })
+
+
 # ── Лаб. №7: AJAX-проверка дублирующихся ИНН в базе ─────────────────────────
 def check_duplicate_inn(request):
     """

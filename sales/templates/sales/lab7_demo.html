@@ -1,0 +1,324 @@
+{% extends "sales/base.html" %}
+{% block title %}Лаб 7 — Валидация ИНН{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Лабораторная работа №7</h1>
+        <p>Валидация ИНН по алгоритму ФНС России · <a href="{% url 'client_list' %}" style="color:inherit; opacity:.7;">Перейти к клиентам ↗</a></p>
+    </div>
+</div>
+
+<!-- Статистика -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:28px;">
+    <div class="card" style="text-align:center; padding:20px;">
+        <div style="font-size:36px; font-weight:800; color:var(--accent);">{{ total_clients }}</div>
+        <div style="color:#888; font-size:13px; margin-top:4px;">Всего клиентов</div>
+    </div>
+    <div class="card" style="text-align:center; padding:20px;">
+        <div style="font-size:36px; font-weight:800; color:#27ae60;">{{ clients_with_inn }}</div>
+        <div style="color:#888; font-size:13px; margin-top:4px;">С ИНН</div>
+    </div>
+    <div class="card" style="text-align:center; padding:20px;">
+        <div style="font-size:36px; font-weight:800; color:#e67e22;">{{ total_clients|add:"-"|add:clients_with_inn|stringformat:"s"|slice:"1:" }}</div>
+        <div style="color:#888; font-size:13px; margin-top:4px;">Без ИНН</div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:28px;">
+
+<!-- Живой валидатор -->
+<div class="card">
+    <h3 style="margin-bottom:16px;">🔍 Живой валидатор ИНН</h3>
+
+    <div class="form-group">
+        <label style="font-weight:600;">Введите ИНН для проверки</label>
+        <input type="text" id="demo-inn" maxlength="12" pattern="\d*" inputmode="numeric"
+               placeholder="Например: 7707083893"
+               style="font-family:monospace; font-size:20px; letter-spacing:4px; text-align:center;">
+    </div>
+
+    <!-- Визуальные ячейки цифр -->
+    <div id="digits-row" style="display:flex; gap:4px; justify-content:center; margin:12px 0; flex-wrap:wrap;">
+    </div>
+
+    <!-- Статус -->
+    <div id="inn-result" style="margin-top:16px; border-radius:10px; padding:16px; text-align:center; display:none;">
+    </div>
+
+    <!-- Разбор по шагам -->
+    <div id="steps-block" style="margin-top:16px; display:none;">
+        <div style="font-size:12px; color:#888; font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Пошаговая проверка</div>
+        <div id="steps-content"></div>
+    </div>
+
+    <!-- Быстрые примеры -->
+    <div style="margin-top:20px;">
+        <div style="font-size:12px; color:#999; margin-bottom:8px;">Примеры для проверки:</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm ex-btn" data-inn="7707083893" title="Сбербанк">7707083893</button>
+            <button class="btn btn-outline btn-sm ex-btn" data-inn="7736207543" title="Google LLC">7736207543</button>
+            <button class="btn btn-outline btn-sm ex-btn" data-inn="500100732259" title="Физлицо">500100732259</button>
+            <button class="btn btn-outline btn-sm ex-btn" data-inn="1234567890" style="opacity:.5;" title="Ошибочный">1234567890 ✗</button>
+        </div>
+    </div>
+</div>
+
+<!-- Алгоритм ФНС -->
+<div class="card">
+    <h3 style="margin-bottom:16px;">📐 Алгоритм ФНС</h3>
+
+    <div style="margin-bottom:16px;">
+        <div style="background:var(--card-bg,#f8f9fa); border-radius:8px; padding:14px; border-left:4px solid var(--accent);">
+            <strong>ИНН организации — 10 цифр</strong>
+            <div style="font-family:monospace; font-size:13px; margin-top:8px; color:#555;">
+                d₁ d₂ d₃ d₄ d₅ d₆ d₇ d₈ d₉ <span style="color:#e74c3c; font-weight:bold;">d₁₀</span>
+            </div>
+            <div style="font-size:12px; color:#777; margin-top:6px;">
+                Вес: 2·4·10·3·5·9·4·6·8<br>
+                Контроль: (Σ wᵢ·dᵢ) mod 11 mod 10 = d₁₀
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+        <div style="background:var(--card-bg,#f8f9fa); border-radius:8px; padding:14px; border-left:4px solid #27ae60;">
+            <strong>ИНН физлица — 12 цифр</strong>
+            <div style="font-family:monospace; font-size:13px; margin-top:8px; color:#555;">
+                d₁…d₉ d₁₀ <span style="color:#e74c3c; font-weight:bold;">d₁₁ d₁₂</span>
+            </div>
+            <div style="font-size:12px; color:#777; margin-top:6px;">
+                11-я: вес 7·2·4·10·3·5·9·4·6·8<br>
+                12-я: вес 3·7·2·4·10·3·5·9·4·6·8
+            </div>
+        </div>
+    </div>
+
+    <div style="font-size:12px; color:#888; line-height:1.7;">
+        <strong>Почему это важно:</strong><br>
+        Алгоритм позволяет обнаружить опечатки в ИНН ещё до обращения к ФНС. 
+        Проверка выполняется как на клиенте (JavaScript), так и на сервере (Python/Django validators), 
+        что соответствует принципу <em>Defense in Depth</em>.
+    </div>
+</div>
+</div>
+
+<!-- Таблица клиентов с ИНН -->
+{% if inn_status %}
+<div class="card">
+    <h3 style="margin-bottom:16px;">📋 Клиенты с ИНН — статус валидации</h3>
+    <div style="overflow-x:auto;">
+    <table>
+        <thead>
+            <tr>
+                <th>Клиент</th>
+                <th style="text-align:center;">ИНН</th>
+                <th style="text-align:center;">Тип</th>
+                <th style="text-align:center;">Статус</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in inn_status %}
+            <tr>
+                <td><strong>{{ item.client.name }}</strong></td>
+                <td style="text-align:center; font-family:monospace; font-size:14px; letter-spacing:2px;">
+                    {{ item.client.inn }}
+                </td>
+                <td style="text-align:center;">
+                    {% if item.client.inn|length == 10 %}
+                    <span class="badge badge-blue">Организация</span>
+                    {% elif item.client.inn|length == 12 %}
+                    <span class="badge" style="background:#8e44ad; color:white;">Физлицо</span>
+                    {% else %}
+                    <span class="badge badge-red">Неизвестно</span>
+                    {% endif %}
+                </td>
+                <td style="text-align:center;">
+                    {% if item.valid %}
+                    <span style="color:#27ae60; font-size:20px;" title="Контрольные цифры верны">✓</span>
+                    <span style="color:#27ae60; font-size:12px; margin-left:4px;">Действителен</span>
+                    {% else %}
+                    <span style="color:#e74c3c; font-size:20px;" title="{{ item.error }}">✗</span>
+                    <span style="color:#e74c3c; font-size:12px; margin-left:4px;">{{ item.error }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'client_edit' item.client.pk %}" class="btn btn-outline btn-sm">Ред.</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% else %}
+<div class="card" style="text-align:center; padding:40px;">
+    <div style="font-size:48px; margin-bottom:12px;">📭</div>
+    <p style="color:#888;">Ни у одного клиента ещё не указан ИНН.</p>
+    <a href="{% url 'client_add' %}" class="btn btn-success" style="margin-top:12px;">+ Добавить клиента с ИНН</a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ──────────────────────────────────────────────────────────
+// Алгоритм проверки контрольных цифр ИНН (ФНС России)
+// ──────────────────────────────────────────────────────────
+const W10 = [2,4,10,3,5,9,4,6,8];
+const W11 = [7,2,4,10,3,5,9,4,6,8];
+const W12 = [3,7,2,4,10,3,5,9,4,6,8];
+
+function chkDigit(weights, digits, pos) {
+    const sum = weights.reduce((s,w,i) => s + w * digits[i], 0);
+    return (sum % 11 % 10) === digits[pos];
+}
+
+function validateInn(inn) {
+    if (!inn) return {ok: null, msg: '', steps: []};
+    if (!/^\d+$/.test(inn)) return {ok: false, msg: 'Только цифры', steps: []};
+    if (inn.length !== 10 && inn.length !== 12)
+        return {ok: false, msg: `Длина ${inn.length} цифр — нужно 10 или 12`, steps: []};
+
+    const d = inn.split('').map(Number);
+    const steps = [];
+
+    if (inn.length === 10) {
+        const sum = W10.reduce((s,w,i) => s + w*d[i], 0);
+        const ctrl = sum % 11 % 10;
+        const ok = ctrl === d[9];
+        steps.push({
+            label: 'Контрольная цифра (d₁₀)',
+            formula: W10.map((w,i) => `${w}×${d[i]}`).join(' + ') + ` = ${sum}`,
+            check: `${sum} mod 11 = ${sum%11}, mod 10 = ${ctrl}`,
+            expected: `d₁₀ = ${d[9]}`,
+            ok
+        });
+        return {ok, msg: ok ? 'ИНН организации действителен' : 'Ошибка контрольной цифры d₁₀', steps};
+    } else {
+        const sum11 = W11.reduce((s,w,i) => s + w*d[i], 0);
+        const ctrl11 = sum11 % 11 % 10;
+        const ok11 = ctrl11 === d[10];
+        steps.push({
+            label: 'Контрольная цифра d₁₁',
+            formula: W11.map((w,i) => `${w}×${d[i]}`).join(' + ') + ` = ${sum11}`,
+            check: `${sum11} mod 11 = ${sum11%11}, mod 10 = ${ctrl11}`,
+            expected: `d₁₁ = ${d[10]}`,
+            ok: ok11
+        });
+        const sum12 = W12.reduce((s,w,i) => s + w*d[i], 0);
+        const ctrl12 = sum12 % 11 % 10;
+        const ok12 = ctrl12 === d[11];
+        steps.push({
+            label: 'Контрольная цифра d₁₂',
+            formula: W12.map((w,i) => `${w}×${d[i]}`).join(' + ') + ` = ${sum12}`,
+            check: `${sum12} mod 11 = ${sum12%11}, mod 10 = ${ctrl12}`,
+            expected: `d₁₂ = ${d[11]}`,
+            ok: ok12
+        });
+        const ok = ok11 && ok12;
+        return {ok, msg: ok ? 'ИНН физлица действителен' : 'Ошибка контрольных цифр', steps};
+    }
+}
+
+// Рендер «цифровых ячеек»
+function renderDigits(inn) {
+    const row = document.getElementById('digits-row');
+    row.innerHTML = '';
+    for (let i = 0; i < 12; i++) {
+        const cell = document.createElement('div');
+        cell.style.cssText = `
+            width:36px; height:48px; border-radius:6px; display:flex; align-items:center;
+            justify-content:center; font-family:monospace; font-size:20px; font-weight:700;
+            transition: all .2s;
+        `;
+        if (i < inn.length) {
+            // последние 1 (для 10) или 2 (для 12) цифры — контрольные
+            const isCtrl = (inn.length===10 && i===9) || (inn.length===12 && i>=10);
+            cell.textContent = inn[i];
+            cell.style.background = isCtrl ? 'rgba(231,76,60,.15)' : 'rgba(102,126,234,.12)';
+            cell.style.border = `2px solid ${isCtrl ? '#e74c3c' : 'var(--accent)'}`;
+            cell.style.color = isCtrl ? '#e74c3c' : 'var(--accent)';
+            if (isCtrl) cell.title = 'Контрольная цифра';
+        } else {
+            cell.textContent = '_';
+            cell.style.background = 'rgba(0,0,0,.04)';
+            cell.style.border = '2px dashed #ddd';
+            cell.style.color = '#ccc';
+        }
+        row.appendChild(cell);
+    }
+}
+
+// Рендер результата
+function renderResult(inn, res) {
+    const el = document.getElementById('inn-result');
+    const stepsEl = document.getElementById('steps-block');
+    const stepsContent = document.getElementById('steps-content');
+
+    if (!inn) { el.style.display = 'none'; stepsEl.style.display = 'none'; return; }
+    el.style.display = 'block';
+
+    if (res.ok === null) {
+        el.style.background = '#f5f5f5'; el.style.color = '#888';
+        el.innerHTML = '⏳ Введите ИНН для проверки';
+        stepsEl.style.display = 'none';
+        return;
+    }
+
+    if (res.ok) {
+        el.style.background = 'rgba(39,174,96,.12)';
+        el.style.border = '2px solid #27ae60';
+        el.style.color = '#1a7a3f';
+        el.innerHTML = `<strong style="font-size:22px;">✓</strong><br><strong>${res.msg}</strong>`;
+    } else {
+        el.style.background = 'rgba(231,76,60,.10)';
+        el.style.border = '2px solid #e74c3c';
+        el.style.color = '#c0392b';
+        el.innerHTML = `<strong style="font-size:22px;">✗</strong><br><strong>${res.msg}</strong>`;
+    }
+
+    if (res.steps.length) {
+        stepsEl.style.display = 'block';
+        stepsContent.innerHTML = res.steps.map(s => `
+            <div style="margin-bottom:12px; padding:10px 12px; border-radius:8px;
+                 background:${s.ok ? 'rgba(39,174,96,.07)' : 'rgba(231,76,60,.07)'};
+                 border-left:3px solid ${s.ok ? '#27ae60' : '#e74c3c'};">
+                <div style="font-weight:600; font-size:13px; margin-bottom:4px;">
+                    ${s.ok ? '✓' : '✗'} ${s.label}
+                </div>
+                <div style="font-family:monospace; font-size:11px; color:#666; word-break:break-all;">
+                    ${s.formula}
+                </div>
+                <div style="font-family:monospace; font-size:11px; color:#555; margin-top:3px;">
+                    ${s.check} → ${s.expected} ${s.ok ? '✓' : '✗'}
+                </div>
+            </div>
+        `).join('');
+    } else {
+        stepsEl.style.display = 'none';
+    }
+}
+
+const input = document.getElementById('demo-inn');
+input.addEventListener('input', function() {
+    const val = this.value.replace(/\D/g,'');
+    this.value = val;
+    renderDigits(val);
+    const res = validateInn(val);
+    renderResult(val, res);
+});
+
+// Примеры
+document.querySelectorAll('.ex-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        input.value = this.dataset.inn;
+        input.dispatchEvent(new Event('input'));
+    });
+});
+
+// Инициализация
+renderDigits('');
+</script>
+{% endblock %}

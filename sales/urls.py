@@ -8,7 +8,8 @@ urlpatterns = [
     path("clients/add/", views.client_add, name="client_add"),
     path("clients/<int:pk>/edit/", views.client_edit, name="client_edit"),
     path("api/clients/search/", views.client_search_api, name="client_search_api"),
-    # Лаб. №7: AJAX-проверка дублей ИНН
+    # Лаб. №7: демо-страница + AJAX-проверка дублей ИНН
+    path("lab7/", views.lab7_inn_demo, name="lab7_demo"),
     path("api/clients/check_inn/", views.check_duplicate_inn, name="check_duplicate_inn"),
     # Products
     path("products/", views.product_list, name="product_list"),
