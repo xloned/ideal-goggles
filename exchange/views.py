@@ -725,18 +725,62 @@ def export_excel_v4(request):
     cell.border = border; cell.alignment = center
     cell.fill = PatternFill('solid', fgColor='BDD7EE')
 
-    # Диаграмма
-    chart = BarChart()
-    chart.type = 'col'; chart.grouping = 'clustered'
-    chart.title = 'Средняя температура по зонам (°C)'
-    chart.y_axis.title = 'Температура (°C)'; chart.x_axis.title = 'Зона'
-    chart.style = 10; chart.width = 20; chart.height = 12
+    # ── Диаграмма ──────────────────────────────────────────────────────────────
+    # Используем LineChart для корректного отображения отрицательных температур:
+    # линии Мин/Макс + маркер Среднего — намного нагляднее столбчатой диаграммы
+    # при значениях, уходящих ниже нуля.
+    from openpyxl.chart import LineChart, Reference, Series as ChartSeries
+    from openpyxl.chart.series import SeriesLabel
+    from openpyxl.chart.data_source import NumDataSource, NumRef
+
     n = len(zones)
-    for col_i, title in [(4, 'Среднее'), (5, 'Минимум'), (6, 'Максимум')]:
-        data_ref = Reference(ws, min_col=col_i, min_row=data_start, max_row=data_start + n - 1)
-        chart.series.append(openpyxl.chart.Series(data_ref, title=title))
-    chart.set_categories(Reference(ws, min_col=1, min_row=data_start, max_row=data_start + n - 1))
-    ws.add_chart(chart, 'H2')
+    cats = Reference(ws, min_col=1, min_row=data_start, max_row=data_start + n - 1)
+
+    line_chart = LineChart()
+    line_chart.title  = 'Температура атмосферного воздуха по зонам'
+    line_chart.y_axis.title = 'Температура (°C)'
+    line_chart.x_axis.title = 'Зона'
+    line_chart.style  = 10
+    line_chart.width  = 22
+    line_chart.height = 14
+    line_chart.y_axis.crossAx = 500
+    line_chart.x_axis.crossAx = 500
+
+    # Порядок: Мин → Среднее → Макс (снизу вверх по температуре)
+    series_cfg = [
+        (5, 'Мин (°C)',     '4472C4', True,  4),   # синий, со сглаживанием
+        (4, 'Среднее (°C)', 'ED7D31', True,  7),   # оранжевый, жирнее
+        (6, 'Макс (°C)',    'C00000', True,  4),   # тёмно-красный
+    ]
+
+    for col_i, title, hex_color, smooth, line_w in series_cfg:
+        ref  = Reference(ws, min_col=col_i, min_row=data_start, max_row=data_start + n - 1)
+        ser  = ChartSeries(ref, title=title)
+        ser.smooth = smooth
+
+        # Цвет линии
+        from openpyxl.drawing.fill import PatternFillProperties
+        ser.graphicalProperties.line.solidFill = hex_color
+        ser.graphicalProperties.line.width      = line_w * 1000   # EMU × 1000
+
+        # Маркер на точках
+        ser.marker.symbol   = 'circle'
+        ser.marker.size     = 8
+        ser.marker.graphicalProperties.solidFill  = hex_color
+        ser.marker.graphicalProperties.line.solidFill = hex_color
+
+        # Подписи значений над точками
+        from openpyxl.chart.label import DataLabelList
+        ser.dLbls = DataLabelList()
+        ser.dLbls.showVal  = True
+        ser.dLbls.showLegendKey = False
+        ser.dLbls.showCatName   = False
+        ser.dLbls.showSerName   = False
+
+        line_chart.append(ser)
+
+    line_chart.set_categories(cats)
+    ws.add_chart(line_chart, 'H2')
 
     buf = io.BytesIO()
     wb.save(buf); buf.seek(0)
